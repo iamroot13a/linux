@@ -127,7 +127,7 @@
  AR_CLASS(	.arm	)
 
 
-    /* Start Linux Source Driving */
+    /* 부트로더 제외 시작점 */
 start:
 		.type	start,#function
 		.rept	7
