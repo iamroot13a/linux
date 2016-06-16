@@ -125,6 +125,9 @@
 		 * classes.
 		 */
  AR_CLASS(	.arm	)
+
+
+    /* Start Linux Source Driving */
 start:
 		.type	start,#function
 		.rept	7
