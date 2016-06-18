@@ -115,26 +115,66 @@
 		.endm
 
 		.section ".start", #alloc, #execinstr
+/*** @iamroot
+  
+  섹션정의부분 : .section name // .start 섹션 정의
+   
+    #alloc : gas directives flag //  elf영역에서 메모리에 올린다고 정의
+
+    - elf (Executable and Linkable Format) : 컴파일후 아웃풋 파일 실행 파일, 목적 파일, 공유 라이브러리 그리고 코어 덤프를 위한 리눅스 표준 파일 형식
+    -코어덤프 : 프로그램 비정상 종료시 생성되는 파일로 디버깅을 통해 비정상종료 원인을 파악하는데 사용됨.  프로그램 카운터와 스택 포인터, 메모리 관리 정보, 기타 프로세서와 운영 체제 플래그 및 정보 등을 포함한 프로세서 레지스터같은 프로그램 상태의 중요 부분들이 대개 동시에 덤프됨.
+
+    #execinstr : gas directives flag // 실행 가능한 영역으로 정의 
+
+ ***/
+
+
 /*
  * sort out different calling conventions
  */
 		.align
+/*** @iamroot
+
+  메모리 정렬 명령어
+  default : 2^2 = 4byte = 32bit 메모리로 정렬시켜
+  메모리 읽는 속도를 높임 (32bit arm 머신이므로 한 사이클에 하나의 데이터를 읽을수 있음)
+ 
+ ***/
+
+
 		/*
 		 * Always enter in ARM state for CPUs that support the ARM ISA.
 		 * As of today (2014) that's exactly the members of the A and R
 		 * classes.
 		 */
  AR_CLASS(	.arm	)
+/*** @iamroot
+ 
+  AR_CLASS 매크로를 통해 CONFIG_CPU_V7M 가 정의 되어 있으면 .arm 무시 정의되어 있지 않으면 .arm 실행
 
+  .arm : gas directives  .code32 로 실행
+
+  default 도 arm 이지만 명시적으로 적어두는 코드
+ 
+ ***/
 
     /* 부트로더 제외 시작점 */
-start:
-		.type	start,#function
+start: /** @iamroot : start 라벨 설정 **/
+		.type	start,#function 
+
+/** @iamroot 심볼 타입을 함수로 설정 (funciton, object)
+arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
+
 		.rept	7
-		__nop
+		__nop  /** @iamroot nop 매크로 라즈베리파이2에서는 EFI부팅을 사용하지 않기때문에 mov r0, r0로 대체 됨 **/
 		.endr
-   ARM(		mov	r0, r0		)
-   ARM(		b	1f		)
+
+/** @iamroot __nop 를 7번 반복 __nop  : 4byte X 7 = 28 byte + 아래 mov r0, r0  포함 32byte = 0x20
+ 이유? 여러가지 부트로더 중 하나의 부트로더가 0x20 에서 실행하지 않으면 에러가 발생하기 때문에 의미없는 코드 추가
+ **/
+
+   ARM(		mov	r0, r0		) /** @iamroot r0 레지스터를 r0 레지스터로 복사한다 이유??? thumb 인스트럭션과 arm 인스트럭션을 혼용할 때 arm 인스트럭션의 align 맞추기로 활용 **/
+   ARM(		b	1f		) /** @iamroot 레이블 1 로분기 f : 1이라는 레이블은 많기 때문에 바로 다음에 가까운 1레이블로 분기한다는 의미 1b의 경우 위에서 찾으라는 의미 **/
  THUMB(		badr	r12, 1f		)
  THUMB(		bx	r12		)
 
@@ -144,11 +184,20 @@ start:
 		.word	0x04030201	@ endianness flag
 
  THUMB(		.thumb			)
-1:		__EFI_HEADER
+1:		__EFI_HEADER /** @iamroot EFI_HEADER 매크로로 이동**/
 
- ARM_BE8(	setend	be		)	@ go BE8 if compiled for BE8
+ ARM_BE8(	setend	be		)	@ go BE8 if compiled for BE8 /**  @iamroot 빅엔디안을 사용할때 사용되는 코드 
+                                                              setend : 엔디안 설정 명령어                               be : setend의 플래그로 빅엔디안 사용
+    le : 리틀엔디안 사용                                      **/
  AR_CLASS(	mrs	r9, cpsr	)
+
+/** @iamroot 
+ cpsr 데이터를 r9 레지스터에 저장
+ **/
+
 #ifdef CONFIG_ARM_VIRT_EXT
+
+    /** @iamroot 가상화지원.. ? **/
 		bl	__hyp_stub_install	@ get into SVC mode, reversibly
 #endif
 		mov	r7, r1			@ save architecture ID

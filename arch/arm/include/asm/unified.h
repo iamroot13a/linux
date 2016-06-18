@@ -25,7 +25,8 @@
 #endif
 
 #ifdef CONFIG_CPU_V7M
-#define AR_CLASS(x...)
+#define AR_CLASS(x...)  /** ar 어플리케이션, 리얼타임
+                         M 은 Thumb 모드만 지원하는 가벼운 아키텍쳐**/
 #define M_CLASS(x...)	x
 #else
 #define AR_CLASS(x...)	x

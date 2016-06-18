@@ -10,12 +10,17 @@
 
 		.macro	__nop
 #ifdef CONFIG_EFI_STUB
+
+        /** @iamroot CONFIG_EFI_STUB : UEFI부팅을 사용할때 사용되는 것으로 bios를 대체하는 펌웨어 규격 **/
 		@ This is almost but not quite a NOP, since it does clobber the
 		@ condition flags. But it is the best we can do for EFI, since
 		@ PE/COFF expects the magic string "MZ" at offset 0, while the
 		@ ARM/Linux boot protocol expects an executable instruction
 		@ there.
 		.inst	'M' | ('Z' << 8) | (0x1310 << 16)   @ tstne r0, #0x4d000
+        /** tstne r0, #0x4d000 명령어를 수식으로? 바로 실행tst 플래그만 바꾸고 값은 변하지 않는 AND 연산 
+tstne 의 경우 NOP과 거의 유사하지만 명령어가 실행되기 전에 Z 플래그가 0일경우 실행됨     
+         **/
 #else
 		mov	r0, r0
 #endif

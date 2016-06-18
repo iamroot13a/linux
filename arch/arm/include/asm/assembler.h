@@ -58,6 +58,12 @@
 
 /* Select code for any configuration running in BE8 mode */
 #ifdef CONFIG_CPU_ENDIAN_BE8
+
+/** @iamroot Endian 설정에 따라 코드를 생략 혹은 실행
+ 8bit 단위로 BigEndian으로 메모리 사용
+Little endian 을 default로 사용
+ **/
+
 #define ARM_BE8(code...) code
 #else
 #define ARM_BE8(code...)
