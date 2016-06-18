@@ -68,7 +68,7 @@
 #endif
 
 #ifndef __ALIGN
-#define __ALIGN		.align 4,0x90
+#define __ALIGN		.align 4,0x90   /** @iamroot 0x90 = nop명령어 **/
 #define __ALIGN_STR	".align 4,0x90"
 #endif
 
@@ -80,8 +80,10 @@
 
 #ifndef ENTRY
 #define ENTRY(name) \
-	.globl name ASM_NL \
-	ALIGN ASM_NL \
+	.globl name ASM_NL \   /** @iamroot .globl name ; **/
+	ALIGN ASM_NL \          /** @iamroot .align 0; 
+                             asm/linkage.h 에서 .align 0 으로 정의
+                             **/
 	name:
 #endif
 #endif /* LINKER_SCRIPT */
@@ -94,7 +96,7 @@
 
 #ifndef END
 #define END(name) \
-	.size name, .-name
+	.size name, .-name   /** . (현재 Location Counter) - name 으로 name 함수의 총 크기를 계산함 **/
 #endif
 
 /* If symbol 'name' is treated as a subroutine (gets called, and returns)

@@ -39,11 +39,11 @@ ENTRY(__boot_cpu_mode)
 	 * Save the primary CPU boot mode. Requires 3 scratch registers.
 	 */
 	.macro	store_primary_cpu_mode	reg1, reg2, reg3
-	mrs	\reg1, cpsr
-	and	\reg1, \reg1, #MODE_MASK
-	adr	\reg2, .L__boot_cpu_mode_offset
-	ldr	\reg3, [\reg2]
-	str	\reg1, [\reg2, \reg3]
+	mrs	\reg1, cpsr     /** @iamroot cpsr -> reg1 파라메터를 의미하는 \ 와 함께 사용해야한다. 그렇지 않으면 레이블로 취급하게 되어 오류가 발생한다.  **/
+	and	\reg1, \reg1, #MODE_MASK /** @iamroot 모드마스크와 and 연산을 통해 현재 cpsr의 값이 어떤 모드인지 판단  **/
+	adr	\reg2, .L__boot_cpu_mode_offset /** @iamroot .L__boot_cpu_mode_offset의 메모리주소 값을 reg2번에 저장  **/
+	ldr	\reg3, [\reg2] /** @iamroot ldr reg2안에 들어있는 메모리주소에 있는 값을 reg3레지스터로 저장 **/
+	str	\reg1, [\reg2, \reg3] /** @iamroot [ reg2 주소 + reg3은 offset []안에 두개의 레지스터가 있을경우 앞 레지스터가 주소 뒷 레지스터가 오프셋 ] **/
 	.endm
 
 	/*
@@ -88,11 +88,11 @@ ENTRY(__hyp_stub_install)
 	store_primary_cpu_mode	r4, r5, r6
 ENDPROC(__hyp_stub_install)
 
-	@ fall through...
+	@ fall through...  /** @iamroot 계속 진행됨 **/
 
 @ Secondary CPUs should call here
 ENTRY(__hyp_stub_install_secondary)
-	mrs	r4, cpsr
+	mrs	r4, cpsr    /** @iamroot 20160618 소스코드분석종료  **/
 	and	r4, r4, #MODE_MASK
 
 	/*
@@ -229,7 +229,7 @@ ENDPROC(__hyp_set_vectors)
 #ifndef ZIMAGE
 .align 2
 .L__boot_cpu_mode_offset:
-	.long	__boot_cpu_mode - .
+	.long	__boot_cpu_mode - .  /** @iamroot .long : 32bit 선언  0 - 현재메모리위치주소    **/
 #endif
 
 .align 5

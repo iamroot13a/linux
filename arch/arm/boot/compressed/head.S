@@ -115,7 +115,7 @@
 		.endm
 
 		.section ".start", #alloc, #execinstr
-/*** @iamroot
+/*** @iamroot   20160618  스터디 시작
   
   섹션정의부분 : .section name // .start 섹션 정의
    
@@ -197,8 +197,9 @@ arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
 
 #ifdef CONFIG_ARM_VIRT_EXT
 
-    /** @iamroot 가상화지원.. ? **/
-		bl	__hyp_stub_install	@ get into SVC mode, reversibly
+    /** @iamroot 하이퍼바이저 모드로 커널 진입 **/
+		bl	__hyp_stub_install	@ get into SVC mode, reversibly 
+        /** bl명령어의 경우 r14 레지스터(lr)에 다음 실행할 명령어의 주소를 넣어놓고 분기 **/
 #endif
 		mov	r7, r1			@ save architecture ID
 		mov	r8, r2			@ save atags pointer
