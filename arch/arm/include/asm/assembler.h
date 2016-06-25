@@ -341,21 +341,32 @@ Little endian 을 default로 사용
  * This macro is intended for forcing the CPU into SVC mode at boot time.
  * you cannot return to the original mode.
  */
+ /** @iamroot SVC모드로 실행되는 것을 보장하기 위한 매크로 **/
 .macro safe_svcmode_maskall reg:req
+/** @iamroot req는 reg인자가 반드시 필요하다는 의미 **/
 #if __LINUX_ARM_ARCH__ >= 6 && !defined(CONFIG_CPU_V7M)
 	mrs	\reg , cpsr
-	eor	\reg, \reg, #HYP_MODE
+	eor	\reg, \reg, #HYP_MODE 
+	/** @iamroot 
+		eor: Exclusive OR. 
+		HYP_MODE: 11010
+		SVC mode: 10011
+		eor result: 01001
+		따라서 SVC 모드일 경우 아래 tst에서 Z플래그가 z(0) 이되므로 1: 로 분기한다.
+	**/
 	tst	\reg, #MODE_MASK
 	bic	\reg , \reg , #MODE_MASK
+	/** @iamroot bic: 두 번째 인자와 세 번째 인자를 And, Not 한 후 첫 번째 인자에 저장. 따라서 reg의 mode bit를 MODE_MASK(11111) 과 And, Not 한 후 다시 reg 에 저장**/
 	orr	\reg , \reg , #PSR_I_BIT | PSR_F_BIT | SVC_MODE
+	/** @iamroot I, F, SVC_MODE bit를 set. I, F bit를 1로 set 하면 interrupt를 disable 한다**/
 THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 	bne	1f
-	orr	\reg, \reg, #PSR_A_BIT
+	orr	\reg, \reg, #PSR_A_BIT /** @iamroot HYP_MODE 일 경우 실행. A bit는 불확실한 abort interrupt를 disable 한다**/
 	badr	lr, 2f
 	msr	spsr_cxsf, \reg
 	__MSR_ELR_HYP(14)
 	__ERET
-1:	msr	cpsr_c, \reg
+1:	msr	cpsr_c, \reg  
 2:
 #else
 /*

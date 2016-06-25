@@ -219,16 +219,27 @@ arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
 		 * FIQs/IRQs (numeric definitions from angel arm.h source).
 		 * We only do this if we were in user mode on entry.
 		 */
+		 /** @iamroot Angle: 부트로더의 한 종류. **/
+
 		mrs	r2, cpsr		@ get current mode
 		tst	r2, #3			@ not user?
-		bne	not_angel
+		/** @iamroot tst: And 연산하여 0이면 Z플래그를 set한다. Z(1) **/
+		bne	not_angel  
+		/** @iamroot bne: Z플래그가 z(0)일 경우 분기 **/
+		/** @iamroot User-mode 는 cpsr의 하위 5비트가 10000 이고 나머지 모드는 하위 두 비트중 하나가 1이기 때문에 하위 두 비트를 비교하여 User-mode 인지 판단한다. 따라서 Angel 부트로더일 경우 User 모드로 실행되기 때문에 Z플래그가 set 되어 있고,  분기하지 않는다. **/
 		mov	r0, #0x17		@ angel_SWIreason_EnterSVC
  ARM(		swi	0x123456	)	@ angel_SWI_ARM
  THUMB(		svc	0xab		)	@ angel_SWI_THUMB
 not_angel:
+		/** @iamroot User 모드도 아니고 SVC 모드도 아닐경우 SVC 모드로 실행되는 것을 보장하기 위해 실행 **/
 		safe_svcmode_maskall r0
+		/** @iamroot **/ 
 		msr	spsr_cxsf, r9		@ Save the CPU boot mode in
 						@ SPSR
+		/** @iamroot 
+			spsr_cxsf: google docs 참조 
+			http://egloos.zum.com/recipes/v/5033184
+		**/
 #endif
 		/*
 		 * Note that some cache flushing and other stuff may
