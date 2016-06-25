@@ -150,7 +150,7 @@
  AR_CLASS(	.arm	)
 /*** @iamroot
  
-  AR_CLASS 매크로를 통해 CONFIG_CPU_V7M 가 정의 되어 있으면 .arm 무시 정의되어 있지 않으면 .arm 실행
+  AR_CLASS 매크로를 통해 CONFIG_CPU_V7M 가 정의 되어 있으면 .arm 무시 정의되어 있지 않으면 .arm 실행. CONFIG_CPU_V7M 같이 M 시리즈는 정의되어있지 않은 것으로 한다.
 
   .arm : gas directives  .code32 로 실행
 
@@ -182,6 +182,7 @@ arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
 		.word	_magic_start	@ absolute load/run zImage address
 		.word	_magic_end	@ zImage end address
 		.word	0x04030201	@ endianness flag
+	/** @iamroot **/
 
  THUMB(		.thumb			)
 1:		__EFI_HEADER /** @iamroot EFI_HEADER 매크로로 이동**/
@@ -203,6 +204,14 @@ arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
 #endif
 		mov	r7, r1			@ save architecture ID
 		mov	r8, r2			@ save atags pointer
+		/** @iamroot  하드웨어 적으로 기본적인 레지스터 값이 셋팅되어 있다.
+		u-boot(부트로더)가 부트 데이터의 물리주소를 r2에 저장하여 커널로 설정정보를 넘겨준다.  
+		r0: 0
+		r1: architecture ID (machine type number)
+		r2: tagged list 의 물리주소 값(혹은 Device Tree Block)
+		tagged list: Device Driver 를 표현하는 데이터 구조.
+		DTB(Device Tree Block): 하드웨어를 표현하는 트리형태의 데이터 구조체.   운영체제가 하드웨어를 이해할 수 있도록 작성된다. 이 구조체의 정보를 보고 어떤 디바이스인지 알아내고 메모리 어디에 매핑되어 있는지 판단한다. 다양한 하드웨어를 지원해야할 요구를 해결하기 위해 만들어 졌다. Device Driver 에 접근하기위한 방식. Tagged List 에 비해 확장성이 크다.
+		**/
 
 #ifndef CONFIG_CPU_V7M
 		/*
