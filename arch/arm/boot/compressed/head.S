@@ -233,7 +233,6 @@ arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
 not_angel:
 		/** @iamroot User 모드도 아니고 SVC 모드도 아닐경우 SVC 모드로 실행되는 것을 보장하기 위해 실행 **/
 		safe_svcmode_maskall r0
-		/** @iamroot **/ 
 		msr	spsr_cxsf, r9		@ Save the CPU boot mode in
 						@ SPSR
 		/** @iamroot 
@@ -251,9 +250,10 @@ not_angel:
 		 * by the linker here, but it should preserve r7, r8, and r9.
 		 */
 
-		.text
+		.text   /** @iamroot start라는 큰 레이블 안에서 내부의 작은 섹션을 나누어 레이블 처럼 사용 할수 있도록 하는 gas directives 명령
+                 사용법 .text 하위섹션이름    섹션이름이 생략되면 0로 셋됨 **/
 
-#ifdef CONFIG_AUTO_ZRELADDR
+#ifdef CONFIG_AUTO_ZRELADDR   /** @iamroot zImage로 생성 할 것인가? **/
 		/*
 		 * Find the start of physical memory.  As we are executing
 		 * without the MMU on, we are in the physical address space.
@@ -276,7 +276,7 @@ not_angel:
 		/* Determine final kernel image address. */
 		add	r4, r4, #TEXT_OFFSET
 #else
-		ldr	r4, =zreladdr
+		ldr	r4, =zreladdr  /** @iamroot zreladdr 는 압축해제된 커널이 쓰여질 주소 그리고 최종적으로 실행될 주소를 가리킨다. ??? 하드웨어에 맞춰서 주소가 바뀜  "=" 뒤에 레이블이 나와서 주소를 의미함??  **/
 #endif
 
 		/*
@@ -285,7 +285,7 @@ not_angel:
 		 * Given that r4 > &_end is most unfrequent, we add a rough
 		 * additional 1MB of room for a possible appended DTB.
 		 */
-		mov	r0, pc
+		mov	r0, pc              /** @iamroot ??????????????????????????? 캐시.. 데이터....  **/
 		cmp	r0, r4
 		ldrcc	r0, LC0+32
 		addcc	r0, r0, pc
