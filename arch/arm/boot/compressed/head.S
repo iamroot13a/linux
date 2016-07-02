@@ -285,13 +285,13 @@ not_angel:
 		 * Given that r4 > &_end is most unfrequent, we add a rough
 		 * additional 1MB of room for a possible appended DTB.
 		 */
-		mov	r0, pc              /** @iamroot ??????????????????????????? 캐시.. 데이터....  **/
-		cmp	r0, r4
-		ldrcc	r0, LC0+32
-		addcc	r0, r0, pc
-		cmpcc	r4, r0
+		mov	r0, pc              /** @iamroot  현재 프로그램 카운터를 r0로 복사 **/
+		cmp	r0, r4          /** @iamroot 현재 pc주소와 압축해제된 커널의 시작위치를 비교  **/
+		ldrcc	r0, LC0+32   /** pc주소가 커널주소보다 작다면 PTE영역이 침범 될수 있으므로 LC0 + 32 // LC0 + 32  =  커널 이미지 크기 + PTE 크기 (16K) + DTB의 최대사이즈 (1M)  **/
+		addcc	r0, r0, pc   /** @iamroot 현재위치에서 위에 로드한 크기를 더하여 보호해야할 영역을 확보  **/
+		cmpcc	r4, r0  /** @iamroot r4와 비교하여 보호 할 영역의 확보 가능한지 비교 r4가 더 작다면 PTE영역이 보호할 영역을 침범하게 되므로 캐시온을 보류하고 r4에 1를 셋하여 보류된 사실을 전달함// r4의 1셋값을 기준으로 추후 캐시온을 하기 위하여  **/
 		orrcc	r4, r4, #1		@ remember we skipped cache_on
-		blcs	cache_on
+		blcs	cache_on    /** 캐시온 분기코드 **/
 
 restart:	adr	r0, LC0
 		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}
@@ -653,7 +653,7 @@ LC0:		.word	LC0			@ r1
 		.word	_got_start		@ r11
 		.word	_got_end		@ ip
 		.word	.L_user_stack_end	@ sp
-		.word	_end - restart + 16384 + 1024*1024
+		.word	_end - restart + 16384 + 1024*1024   /** _end - restart ( 커널 이미지 크기) + PTE 크기 (16K) + DTB의 최대사이즈 (1M)  **/
 		.size	LC0, . - LC0
 
 #ifdef CONFIG_ARCH_RPC
@@ -666,7 +666,7 @@ params:		ldr	r0, =0x10000100		@ params_phys for RPC
 
 /*
  * Turn on the cache.  We need to setup some page tables so that we
- * can have both the I and D caches on.
+ * can have both the I and D caches on. // 인스트럭트 and 데이터 캐시
  *
  * We place the page tables 16k down from the kernel execution address,
  * and we hope that nothing else is using it.  If we're using it, we
@@ -753,13 +753,43 @@ __armv3_mpu_cache_on:
 #define CB_BITS 0x0c
 #endif
 
+
+        /* @iamroot
+         * r4 : kernel 시작 주소가 저장되어있음
+         * __setup_mmu:	sub	r3, r4, #16384  r4 에서 16K를 빼서 r3에 저장
+         * bic r3, r3, #0xff     하위 8비트를 비움
+         * bic r3, r3, #0x3f00   8 ~ 13 까지 비트를 비움
+         * 
+         * 0 ~ 13 까지 비트를 비우게 되면  16K 의 배수가 되어 페이지 테이블의
+         * 엔트리 주소에 맞춰 정렬할수 있다
+         *
+         * ?? 비트클리어를 왜 두번 나누어서 하는가?
+         * arm 에서 명령어의 크기의 제약때문에.. 
+         * 두번째 operand의 경우 12bit의 제약을 가진다. 따라서 2의12승의 경우
+         * 0 ~ 4095 까지의 수만 표현가능하다. 이 제약을 해결하기위해 arm에서는
+         * 상위 4비트를 shift rotate right로 하위 8비트를 값으로 지정하고
+         * 로테이트값에 2를 곱하여 32비트를 모두 접근 가능하도록 설계되었다.
+         * (양수만 가능)
+         */
 __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		bic	r3, r3, #0xff		@ Align the pointer
-		bic	r3, r3, #0x3f00
+		bic	r3, r3, #0x3f00    
 /*
  * Initialise the page tables, turning on the cacheable and bufferable
  * bits for the RAM area only.
  */
+    /* @iamroot
+     *  페이지 디렉토리의 시작 주소에서 메모리의 사이즈만큼
+     *  더하여 메모리를 확보
+     * 	mov	r0, r3          
+	 *	mov	r9, r0, lsr #18     하위비트를 클리어시킴
+	 *	mov	r9, r9, lsl #18		@ start of RAM
+	 *	add	r10, r9, #0x10000000	  램의 토탈사이즈
+	 *	mov	r1, #0x12		XN 과 section 으로 선언함
+	 *	orr	r1, r1, #3 << 10	AP[1:0]영역에 11 셋  (access permition)
+     *                          메모리의 Full access 가능 ref : arm 메뉴얼 p1358
+	 *	add	r2, r3, #16384      페이지 테이블의 끝
+     */
 		mov	r0, r3
 		mov	r9, r0, lsr #18
 		mov	r9, r9, lsl #18		@ start of RAM
@@ -767,13 +797,29 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		mov	r1, #0x12		@ XN|U + section mapping
 		orr	r1, r1, #3 << 10	@ AP=11
 		add	r2, r3, #16384
+/* @iamroot 
+ * 1:		cmp	r1, r9      램과 r1 XN + section 과 비교			
+ *		    cmphs	r10, r1	    조건부연산 hs : cs와 같은뜻 carry set일때 실행
+ *                              r1 - r9 >= 0 일때 cmphs r10, r1 실행
+ *                               r10 - r1 >=0 일때 carry set
+ *		    bic	r1, r1, #0x1c		XN 과 Cache , Buffer 를 0으로 초기화 
+ *		    orrlo	r1, r1, #0x10  조건부연산 lo : cc 
+ *                                  r1 가 램 영역안에 없을때 수행됨
+ *                                  의미 : XN 비트를 1로 셋      
+ *		    orrhs	r1, r1, r6      r6 : 0x0e   r1 에 C+B+ section비트를 셋  	
+ *		    str	r1, [r0], #4        PTE의 시작주소에서 4byte씩 증가시키면서 저장
+ *		    add	r1, r1, #1048576    섹션 베이스 어드레스를 1씩 증가(1M)
+ *		    teq	r0, r2              teq : xor 플래그만 바꿔줌  r0 와 r2과 같을때
+ *                                  0이 나옴 Z플래그가 1로 셋  // r2는 끝점
+ *		    bne	1b               r0와 r2과 같지 않으면 반복 (4G까지 4096번반복)
+ */
 1:		cmp	r1, r9			@ if virt > start of RAM
 		cmphs	r10, r1			@   && end of RAM > virt
 		bic	r1, r1, #0x1c		@ clear XN|U + C + B
 		orrlo	r1, r1, #0x10		@ Set XN|U for non-RAM
 		orrhs	r1, r1, r6		@ set RAM section settings
 		str	r1, [r0], #4		@ 1:1 mapping
-		add	r1, r1, #1048576
+		add	r1, r1, #1048576   @ 0x00100000
 		teq	r0, r2
 		bne	1b
 /*
@@ -782,12 +828,29 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
  * so there is no map overlap problem for up to 1 MB compressed kernel.
  * If the execution is in RAM then we would only be duplicating the above.
  */
-		orr	r1, r6, #0x04		@ ensure B is set for this
+
+        /* @iamroot
+		* orr	r1, r6, #0x04	 라이트백일경우에도 Buffer셋 하기 위하여
+		* orr	r1, r1, #3 << 10  AP 셋 = full access
+		* mov	r2, pc              r2 에 현재 프로그램카운터 로드
+		* mov	r2, r2, lsr #20     현재수행하고 있는 주소의  섹션베이스어드레스
+        *                           주소를 구함
+	    * orr	r1, r1, r2, lsl #20
+		* add	r0, r3, r2, lsl #2  상대주소를 구하기위해 4를 곱함 ( << 2 = * 4 )
+		*/
+        orr	r1, r6, #0x04		@ ensure B is set for this
 		orr	r1, r1, #3 << 10
 		mov	r2, pc
 		mov	r2, r2, lsr #20
 		orr	r1, r1, r2, lsl #20
 		add	r0, r3, r2, lsl #2
+        /*
+		 * str	r1, [r0], #4       r1 값을 r0가 가지고 있는 주소에 쓰고
+         *                         r0의 주소값을 4증가시킴   
+		 * add	r1, r1, #1048576   r1에 1M를 더함     
+		 * str	r1, [r0]           r1 값을 r0가 가리키는 주소에 씀
+		 * mov	pc, lr             return
+         */
 		str	r1, [r0], #4
 		add	r1, r1, #1048576
 		str	r1, [r0]
@@ -827,15 +890,38 @@ __armv4_mmu_cache_on:
 #endif
 		mov	pc, r12
 
+        /** @iamroot mmu 캐시온코드 
+          **/
 __armv7_mmu_cache_on:
-		mov	r12, lr
+		mov	r12, lr 
 #ifdef CONFIG_MMU
 		mrc	p15, 0, r11, c0, c1, 4	@ read ID_MMFR0
-		tst	r11, #0xf		@ VMSA
-		movne	r6, #CB_BITS | 0x02	@ !XN
-		blne	__setup_mmu
+/* @iamroot  mrc ARM 레퍼런스 찾는법
+ * 0  :  OPcode 1
+ * r11 : arm 레지스터 
+ * c0 : CRn
+ * c1 : CRm
+ * 4  : OPcode 2  // 생략가능
+ * 결과값 : ID_MMFR0, Memory Model Feature Register 0
+ */
+		tst	r11, #0xf		@ VMSA :  버츄얼 메모리 시스템 아키텍쳐  지원하지 않으면 0000 bit
+		movne	r6, #CB_BITS | 0x02	@ !XN 
+        /* @iamroot
+        * !execute never  : r6에 0x0E 값이들어감
+        * VMSA를 지원하면.. 조건부연산 ne  Zero 플래그가 0 (z) 일때 실행
+        * !!! 0x02 가 XN 관련 비트인것으로 추정됨
+        * CB_BITS는 DCACHE 라이트쓰루 or 라이트백 인지에 따라 결정됨
+        * ? 라이트쓰루 : 캐시변경과함께 메모리반영
+        * ? 라이트백 : 캐시 변경후 메모리 반영x
+        */
+		blne	__setup_mmu  @ VMSA를 지원할때 __setup_mmu  진입
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
+/* iamroot
+* 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
+*      결과값 : CP15DSB, Data Synchronization Barrier operation
+*       데이터 동기화?  캐시 -> 메모리
+*/
 		tst	r11, #0xf		@ VMSA
 		mcrne	p15, 0, r0, c8, c7, 0	@ flush I,D TLBs
 #endif
@@ -912,6 +998,9 @@ __common_mmu_cache_on:
 
 call_cache_fn:	adr	r12, proc_types
 #ifdef CONFIG_CPU_CP15
+        /* @iamroot CP15 : 시스템 컨트롤을 목적을 가진 코프로세서
+         *  Main ID 레지스터를 읽어와서 r9 레지스터에 복사
+         */
 		mrc	p15, 0, r9, c0, c0	@ get processor ID
 #elif defined(CONFIG_CPU_V7M)
 		/*
@@ -926,6 +1015,11 @@ call_cache_fn:	adr	r12, proc_types
 #else
 		ldr	r9, =CONFIG_PROCESSOR_ID
 #endif
+
+/* @iamroot
+* proc_types 주소에서 상대주소 0 와 4를더해 value와 mask의 값을 r9에 저장되어 있는 프로세서 ID와 비교하여 알맞은 프로세서를 찾는 루틴  
+*/
+
 1:		ldr	r1, [r12, #0]		@ get value
 		ldr	r2, [r12, #4]		@ get mask
 		eor	r1, r1, r9		@ (real ^ match)
@@ -1080,7 +1174,10 @@ proc_types:
 
 		.word	0x000f0000		@ new CPU Id
 		.word	0x000f0000
-		W(b)	__armv7_mmu_cache_on
+        /** @iamroot 
+         * armv7이라고 가정
+         **/
+		W(b)	__armv7_mmu_cache_on    
 		W(b)	__armv7_mmu_cache_off
 		W(b)	__armv7_mmu_cache_flush
 

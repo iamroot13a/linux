@@ -45,6 +45,7 @@
 #define ARM(x...)
 #define THUMB(x...)	x
 #ifdef __ASSEMBLY__
+    /** @iamroot 명령어의 크기를 32bit로 고정시킴 **/
 #define W(instr)	instr.w
 #else
 #define WASM(instr)	#instr ".w"
