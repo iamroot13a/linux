@@ -783,8 +783,8 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
      *  더하여 메모리를 확보
      * 	mov	r0, r3          
 	 *	mov	r9, r0, lsr #18     하위비트를 클리어시킴
-	 *	mov	r9, r9, lsl #18		@ start of RAM
-	 *	add	r10, r9, #0x10000000	  램의 토탈사이즈
+	 *	mov	r9, r9, lsl #18		@ start of RAM  4G의 가상메모리의 시작점과 물리메모리를 매핑
+	 *	add	r10, r9, #0x10000000	  램의 토탈사이즈 // 256MB
 	 *	mov	r1, #0x12		XN 과 section 으로 선언함
 	 *	orr	r1, r1, #3 << 10	AP[1:0]영역에 11 셋  (access permition)
      *                          메모리의 Full access 가능 ref : arm 메뉴얼 p1358
@@ -921,7 +921,15 @@ __armv7_mmu_cache_on:
 * 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
 *      결과값 : CP15DSB, Data Synchronization Barrier operation
 *       데이터 동기화?  캐시 -> 메모리
-*/
+*	
+*		tst r11, #0xf		VMSA 지원하지 않으면 0000bit
+*		mcrne	p15, 0, r0, c8, c7, 0	 ne 조건연산자 이므로 Z플래그가 0일때 실행 -> VMSA를 지원하면 실행
+*		TLB를 초기화 해주는 코드. 초기화 이유 : TLB에 초기화 되어 있지 않으면 예측할수 없는 동작이 가능함
+*		TLB란?	Translation Lookaside Buffer
+*					PTE들을 위한 특별한 고속의 Cache : memory cache와 동일기능을 수행하며 
+*					가장 최근에 사용되었던 PTE들을 저장한다.
+*					가상메모리와 물리메모리를 매핑하여 빠르게 엑세스 가능(TLB가 없다면 두번 엑세스해야함)
+*/	
 		tst	r11, #0xf		@ VMSA
 		mcrne	p15, 0, r0, c8, c7, 0	@ flush I,D TLBs
 #endif
