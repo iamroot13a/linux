@@ -933,6 +933,30 @@ __armv7_mmu_cache_on:
 		tst	r11, #0xf		@ VMSA
 		mcrne	p15, 0, r0, c8, c7, 0	@ flush I,D TLBs
 #endif
+/* iamroot
+*		mrc	p15, 0, r0, c1, c0, 0	r0레지스터로 시스템컨트롤 레지스터의 데이터를 가져옴
+*		bic	r0, r0, #1 << 28	TRE 비트를 0으로 셋 (TEX REMAP DISABLE)
+*								TEX REMAP 은 cache able 정책을 유연하게 사용할수 있다.
+*								하지만 현재 사용하지 않는다..... 불안정
+*		orr	r0, r0, #0x5000		I - RR 비트를 1로 셋// I-캐시 사용 및  RR 캐시정책을 사용한다
+*								RR 이 캐시정책에 많이 쓰이는 이유 ?
+*								현재 RISC 프로세서에서 경험적으로 RR이 가장 효율적이다.
+*		orr	r0, r0, #0x003c		5bit : CP15BEN  cache barrier 사용
+*								3:4 bit : Reserved, RAO/SBOP.
+*								Read-As-One, Should-Be-One-or-Preserved on writes.
+*								2bit : cache enable // unified cache : I or D 캐시로 사용되는 통합캐시
+*								
+*								정렬을 하면 최적의 성능을 낼수 있기때문에 과거 임베디드 시스템의 경우
+*								비정렬 처리를 허용하지 않았지만 최근 임베디드 시스템의 경우
+*								비정렬 처리를 해도 충분한 성능을 가지고 있기때문에 허용되게 되었다.
+*		bic	r0, r0, #2			A bit를 클리어 : 정렬 체크 사용 안함
+*								정렬이 되어 있지 않더라도 비정렬 처리 허용
+*
+*		orr	r0, r0, #1 << 22	@ U (v6 unaligned access model)
+*								U비트가 셋되있을때 비정렬 처리 허용....
+*								반면에 U비트가 0일때는rotated aligned 한다?????????`
+*
+*/
 		mrc	p15, 0, r0, c1, c0, 0	@ read control reg
 		bic	r0, r0, #1 << 28	@ clear SCTLR.TRE
 		orr	r0, r0, #0x5000		@ I-cache enable, RR cache replacement
