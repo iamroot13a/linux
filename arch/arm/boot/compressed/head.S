@@ -293,17 +293,29 @@ not_angel:
 		orrcc	r4, r4, #1		@ remember we skipped cache_on
 		blcs	cache_on    /** 캐시온 분기코드 **/
 
-restart:	adr	r0, LC0
-		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}
-		ldr	sp, [r0, #28]
+restart:	adr	r0, LC0	  /* iamroot LC0의 주소를 r0에 가져옴 */
+		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}  /* iamroot LC0 에서 순차적으로 값을 읽어와 레지스터에 저장. 자세한 설명은 아래 주석 참조  */
+		ldr	sp, [r0, #28]  /* @iamroot r0를 28Byte 증가시킨 주소에서 읽어와 sp 주소에서 읽어와 sp에 저장. r0+28 =  .L_user_stack_end */
+
+		/* iamroot 
+		 * r0는 LC0가 메모리에 로드된주소, r1은 빌드시  LC0의 메모리 주소
+		 * delta offset = r0 - r1
+		 * delta offset을 활용하여 실 메모리 주소로 보정한다.
+		 */
 
 		/*
 		 * We might be running at a different address.  We need
 		 * to fix up various pointers.
-		 */
+		 */ 
 		sub	r0, r0, r1		@ calculate the delta offset
 		add	r6, r6, r0		@ _edata
 		add	r10, r10, r0		@ inflated kernel size location
+
+		/* iamroot 
+		 * piggy.S의 piggy_data의 끝 4byte에 kernel size가 들어있는데
+		 * 이 size를 endian에 관계없이 강제로 little endian 형식으로 
+		 * 읽어온다.
+		 */
 
 		/*
 		 * The kernel build system appends the size of the
@@ -317,7 +329,7 @@ restart:	adr	r0, LC0
 		ldrb	r10, [r10, #3]
 		orr	r9, r9, lr, lsl #16
 		orr	r9, r9, r10, lsl #24
-
+ 
 #ifndef CONFIG_ZBOOT_ROM
 		/* malloc space is above the relocated stack (64k max) */
 		add	sp, sp, r0
@@ -994,7 +1006,7 @@ __armv7_mmu_cache_on:
 						11: Manager   - 권한 검사 없이 모두 허용한다. (모두 접근)
 						따라서 D0의 권한을 Client로 설정하며 D1~15는 Manager로
 						설정된다.
-		mcrne   p15, 0, r6, c2, c0, 2   r6에 설정한 값을 TTBCR로 로
+		mcrne   p15, 0, r6, c2, c0, 2   r6에 설정한 값을 TTBCR로 로드
 */
 #ifdef CONFIG_MMU
  ARM_BE8(	orr	r0, r0, #1 << 25 )	@ big-endian page tables
@@ -1007,13 +1019,42 @@ __armv7_mmu_cache_on:
 		mcrne	p15, 0, r1, c3, c0, 0	@ load domain access control
 		mcrne   p15, 0, r6, c2, c0, 2   @ load ttb control
 #endif
+
+/* iamroot
+		mcr	p15, 0, r0, c7, c5, 4	ISB(Instruction Syncronization Barrier):
+						전후 Instruction에 의존성이 있을 경우나 최적화로 인해
+						Instruction의 순서가 변경되었을 경우 동기화를 위해
+						CPU pipeline을 flush하여 이전 코드들이 완료되었음을
+						보장한다. cp15 c7 명령은 deprecated 되었고 ISB라는(혹은 
+						DMB, DSB등) 전용 Instruction이 지원된다. 하지만 기존
+						버전과의 호환성을 위해 사용했다고 commiter가 말했다.
+						아래 명령을 위해 사용됨
+		mcr	p15, 0, r0, c1, c0, 0	MMU enable
+		mrc	p15, 0, r0, c1, c0, 0	cp15를 변경했을 경우 erratum E7 문제(?)에 의해서
+						CPU가 오작동 할 수 있다. 이 문제를 해결하기 위해 
+						일종의 Interval(CPWAIT)을 두려고 두 Instruction을 사용한다.
+						link: http://www.marvell.com/application-processors/pxa-family/assets/pxa_27x_spec_update.pdf 의 E7 부분.
+		mov	r0, #0
+		mcr	p15, 0, r0, c7, c5, 4	@ ISB
+		mov	pc, r12
+*/
 		mcr	p15, 0, r0, c7, c5, 4	@ ISB
 		mcr	p15, 0, r0, c1, c0, 0	@ load control register
 		mrc	p15, 0, r0, c1, c0, 0	@ and read it back
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c5, 4	@ ISB
 		mov	pc, r12
-
+/* iamroot
+	__armv7_mmu_cache_on을 통해 결과적으로 수정된 SCTRL(r0) 레지스터 값
+	TRE 비트를 0으로 셋
+	I - RR 비트를 1로 셋
+	5bit : CP15BEN
+	3:4 bit : Reserved,
+	2bit : cache enable 
+	A bit를 클리어 : 정렬 체크 사용 안함
+	U bit 1로 set
+	M bit 1로 set
+*/
 __fa526_cache_on:
 		mov	r12, lr
 		mov	r6, #CB_BITS | 0x12	@ U
