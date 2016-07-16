@@ -785,7 +785,8 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 	 *	mov	r9, r0, lsr #18     하위비트를 클리어시킴
 	 *	mov	r9, r9, lsl #18		@ start of RAM  4G의 가상메모리의 시작점과 물리메모리를 매핑
 	 *	add	r10, r9, #0x10000000	  램의 토탈사이즈 // 256MB
-	 *	mov	r1, #0x12		XN 과 section 으로 선언함
+	 *	mov	r1, #0x12		XN 과 section 으로 선언함. Domain을 포함한 [31:8] 부분은
+	 					0로 초기화 됨.
 	 *	orr	r1, r1, #3 << 10	AP[1:0]영역에 11 셋  (access permition)
      *                          메모리의 Full access 가능 ref : arm 메뉴얼 p1358
 	 *	add	r2, r3, #16384      페이지 테이블의 끝
@@ -964,6 +965,37 @@ __armv7_mmu_cache_on:
 		bic	r0, r0, #2		@ A (no unaligned access fault)
 		orr	r0, r0, #1 << 22	@ U (v6 unaligned access model)
 						@ (needed for ARM1176)
+
+/* iamroot
+ ARM_BE8(	orr	r0, r0, #1 << 25 )	little endian 으로 가정하므로 수행 안됨.
+		mrcne   p15, 0, r6, c2, c0, 2   r6 레지스터에 TTBCR 을 읽어옴
+		orrne	r0, r0, #1		M bit. PL1과 PL0의 stage 1 MMU를 enable한다
+						PL(Privilege Level): Non-secure 상태일때 ARMv7에는
+						0, 1, 2 세가지 권한이 존재한다. 0는 유저 프로그램, 
+						1은 통상 운영체제 프로그램, 2는 하이퍼바이저 레벨이다.
+						stage 1: VA to PA or IPA
+							 가상주소를 물리주소로 변환하는 단계. 만약 OS가
+							 Guest일 경우 IPA로 변환된다.
+						stage 2: IPA to PA
+							 하이퍼바이저 모드일 경우 IPA를 실제 PA로 변환
+							 시켜주는 단계.
+		movne	r1, #0xfffffffd		@ domain 0 = client
+		bic     r6, r6, #1 << 31        EAE bit. TTBCR을 short/long중 어떤 포맷을 사용할지 결정
+						한다. 0: short, 1: long
+		bic     r6, r6, #3 << 0         TTBR0 만 쓰도록한다. ??? #7 이어야 하는것 아닌가
+		mcrne	p15, 0, r3, c2, c0, 0	PTE시작주소(r3)를 TTBR0에 로드
+		mcrne	p15, 0, r1, c3, c0, 0 	DACR(Domain Access Control Register)에 0xfffffffd 
+						값을 넣는다. DACR은 2bit로 하나의 메모리 도메인을 표현하며
+						총 16개의 도메인을 가진다. 각 도메인의 값은 메모리 권한을
+						나타낸다.
+						00: No Access - 모두 접근 불가
+						01: Client    - PTE의 AP값을 따른다
+						10: Reserved
+						11: Manager   - 권한 검사 없이 모두 허용한다. (모두 접근)
+						따라서 D0의 권한을 Client로 설정하며 D1~15는 Manager로
+						설정된다.
+		mcrne   p15, 0, r6, c2, c0, 2   r6에 설정한 값을 TTBCR로 로
+*/
 #ifdef CONFIG_MMU
  ARM_BE8(	orr	r0, r0, #1 << 25 )	@ big-endian page tables
 		mrcne   p15, 0, r6, c2, c0, 2   @ read ttb control reg
