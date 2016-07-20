@@ -79,11 +79,12 @@
 #define ALIGN_STR __ALIGN_STR
 
 #ifndef ENTRY
+/** @iamroot .globl name 
+  .align 0;    asm/linkage.h 에서 .align 0 으로 정의 **/
+
 #define ENTRY(name) \
-	.globl name ASM_NL \   /** @iamroot .globl name ; **/
-	ALIGN ASM_NL \          /** @iamroot .align 0; 
-                             asm/linkage.h 에서 .align 0 으로 정의
-                             **/
+	.globl name ASM_NL \
+	ALIGN ASM_NL \
 	name:
 #endif
 #endif /* LINKER_SCRIPT */

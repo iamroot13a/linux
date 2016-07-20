@@ -293,17 +293,29 @@ not_angel:
 		orrcc	r4, r4, #1		@ remember we skipped cache_on
 		blcs	cache_on    /** 캐시온 분기코드 **/
 
-restart:	adr	r0, LC0
-		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}
-		ldr	sp, [r0, #28]
+restart:	adr	r0, LC0	  /* iamroot LC0의 주소를 r0에 가져옴 */
+		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}  /* iamroot LC0 에서 순차적으로 값을 읽어와 레지스터에 저장. 자세한 설명은 아래 주석 참조  */
+		ldr	sp, [r0, #28]  /* @iamroot r0를 28Byte 증가시킨 주소에서 읽어와 sp 주소에서 읽어와 sp에 저장. r0+28 =  .L_user_stack_end */
+
+		/* iamroot 
+		 * r0는 LC0가 메모리에 로드된주소, r1은 빌드시  LC0의 메모리 주소
+		 * delta offset = r0 - r1
+		 * delta offset을 활용하여 실 메모리 주소로 보정한다.
+		 */
 
 		/*
 		 * We might be running at a different address.  We need
 		 * to fix up various pointers.
-		 */
+		 */ 
 		sub	r0, r0, r1		@ calculate the delta offset
 		add	r6, r6, r0		@ _edata
 		add	r10, r10, r0		@ inflated kernel size location
+
+		/* iamroot 
+		 * piggy.S의 piggy_data의 끝 4byte에 kernel size가 들어있는데
+		 * 이 size를 endian에 관계없이 강제로 little endian 형식으로 
+		 * 읽어온다.
+		 */
 
 		/*
 		 * The kernel build system appends the size of the
@@ -317,7 +329,7 @@ restart:	adr	r0, LC0
 		ldrb	r10, [r10, #3]
 		orr	r9, r9, lr, lsl #16
 		orr	r9, r9, r10, lsl #24
-
+ 
 #ifndef CONFIG_ZBOOT_ROM
 		/* malloc space is above the relocated stack (64k max) */
 		add	sp, sp, r0
@@ -783,9 +795,10 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
      *  더하여 메모리를 확보
      * 	mov	r0, r3          
 	 *	mov	r9, r0, lsr #18     하위비트를 클리어시킴
-	 *	mov	r9, r9, lsl #18		@ start of RAM
-	 *	add	r10, r9, #0x10000000	  램의 토탈사이즈
-	 *	mov	r1, #0x12		XN 과 section 으로 선언함
+	 *	mov	r9, r9, lsl #18		@ start of RAM  4G의 가상메모리의 시작점과 물리메모리를 매핑
+	 *	add	r10, r9, #0x10000000	  램의 토탈사이즈 // 256MB
+	 *	mov	r1, #0x12		XN 과 section 으로 선언함. Domain을 포함한 [31:8] 부분은
+	 					0로 초기화 됨.
 	 *	orr	r1, r1, #3 << 10	AP[1:0]영역에 11 셋  (access permition)
      *                          메모리의 Full access 가능 ref : arm 메뉴얼 p1358
 	 *	add	r2, r3, #16384      페이지 테이블의 끝
@@ -921,10 +934,42 @@ __armv7_mmu_cache_on:
 * 		mcr	p15, 0, r0, c7, c10, 4	@ drain write buffer
 *      결과값 : CP15DSB, Data Synchronization Barrier operation
 *       데이터 동기화?  캐시 -> 메모리
-*/
+*	
+*		tst r11, #0xf		VMSA 지원하지 않으면 0000bit
+*		mcrne	p15, 0, r0, c8, c7, 0	 ne 조건연산자 이므로 Z플래그가 0일때 실행 -> VMSA를 지원하면 실행
+*		TLB를 초기화 해주는 코드. 초기화 이유 : TLB에 초기화 되어 있지 않으면 예측할수 없는 동작이 가능함
+*		TLB란?	Translation Lookaside Buffer
+*					PTE들을 위한 특별한 고속의 Cache : memory cache와 동일기능을 수행하며 
+*					가장 최근에 사용되었던 PTE들을 저장한다.
+*					가상메모리와 물리메모리를 매핑하여 빠르게 엑세스 가능(TLB가 없다면 두번 엑세스해야함)
+*/	
 		tst	r11, #0xf		@ VMSA
 		mcrne	p15, 0, r0, c8, c7, 0	@ flush I,D TLBs
 #endif
+/* iamroot
+*		mrc	p15, 0, r0, c1, c0, 0	r0레지스터로 시스템컨트롤 레지스터의 데이터를 가져옴
+*		bic	r0, r0, #1 << 28	TRE 비트를 0으로 셋 (TEX REMAP DISABLE)
+*								TEX REMAP 은 cache able 정책을 유연하게 사용할수 있다.
+*								하지만 현재 사용하지 않는다..... 불안정
+*		orr	r0, r0, #0x5000		I - RR 비트를 1로 셋// I-캐시 사용 및  RR 캐시정책을 사용한다
+*								RR 이 캐시정책에 많이 쓰이는 이유 ?
+*								현재 RISC 프로세서에서 경험적으로 RR이 가장 효율적이다.
+*		orr	r0, r0, #0x003c		5bit : CP15BEN  cache barrier 사용
+*								3:4 bit : Reserved, RAO/SBOP.
+*								Read-As-One, Should-Be-One-or-Preserved on writes.
+*								2bit : cache enable // unified cache : I or D 캐시로 사용되는 통합캐시
+*								
+*								정렬을 하면 최적의 성능을 낼수 있기때문에 과거 임베디드 시스템의 경우
+*								비정렬 처리를 허용하지 않았지만 최근 임베디드 시스템의 경우
+*								비정렬 처리를 해도 충분한 성능을 가지고 있기때문에 허용되게 되었다.
+*		bic	r0, r0, #2			A bit를 클리어 : 정렬 체크 사용 안함
+*								정렬이 되어 있지 않더라도 비정렬 처리 허용
+*
+*		orr	r0, r0, #1 << 22	@ U (v6 unaligned access model)
+*								U비트가 셋되있을때 비정렬 처리 허용....
+*								반면에 U비트가 0일때는rotated aligned 한다?????????`
+*
+*/
 		mrc	p15, 0, r0, c1, c0, 0	@ read control reg
 		bic	r0, r0, #1 << 28	@ clear SCTLR.TRE
 		orr	r0, r0, #0x5000		@ I-cache enable, RR cache replacement
@@ -932,6 +977,37 @@ __armv7_mmu_cache_on:
 		bic	r0, r0, #2		@ A (no unaligned access fault)
 		orr	r0, r0, #1 << 22	@ U (v6 unaligned access model)
 						@ (needed for ARM1176)
+
+/* iamroot
+ ARM_BE8(	orr	r0, r0, #1 << 25 )	little endian 으로 가정하므로 수행 안됨.
+		mrcne   p15, 0, r6, c2, c0, 2   r6 레지스터에 TTBCR 을 읽어옴
+		orrne	r0, r0, #1		M bit. PL1과 PL0의 stage 1 MMU를 enable한다
+						PL(Privilege Level): Non-secure 상태일때 ARMv7에는
+						0, 1, 2 세가지 권한이 존재한다. 0는 유저 프로그램, 
+						1은 통상 운영체제 프로그램, 2는 하이퍼바이저 레벨이다.
+						stage 1: VA to PA or IPA
+							 가상주소를 물리주소로 변환하는 단계. 만약 OS가
+							 Guest일 경우 IPA로 변환된다.
+						stage 2: IPA to PA
+							 하이퍼바이저 모드일 경우 IPA를 실제 PA로 변환
+							 시켜주는 단계.
+		movne	r1, #0xfffffffd		@ domain 0 = client
+		bic     r6, r6, #1 << 31        EAE bit. TTBCR을 short/long중 어떤 포맷을 사용할지 결정
+						한다. 0: short, 1: long
+		bic     r6, r6, #3 << 0         TTBR0 만 쓰도록한다. ??? #7 이어야 하는것 아닌가
+		mcrne	p15, 0, r3, c2, c0, 0	PTE시작주소(r3)를 TTBR0에 로드
+		mcrne	p15, 0, r1, c3, c0, 0 	DACR(Domain Access Control Register)에 0xfffffffd 
+						값을 넣는다. DACR은 2bit로 하나의 메모리 도메인을 표현하며
+						총 16개의 도메인을 가진다. 각 도메인의 값은 메모리 권한을
+						나타낸다.
+						00: No Access - 모두 접근 불가
+						01: Client    - PTE의 AP값을 따른다
+						10: Reserved
+						11: Manager   - 권한 검사 없이 모두 허용한다. (모두 접근)
+						따라서 D0의 권한을 Client로 설정하며 D1~15는 Manager로
+						설정된다.
+		mcrne   p15, 0, r6, c2, c0, 2   r6에 설정한 값을 TTBCR로 로드
+*/
 #ifdef CONFIG_MMU
  ARM_BE8(	orr	r0, r0, #1 << 25 )	@ big-endian page tables
 		mrcne   p15, 0, r6, c2, c0, 2   @ read ttb control reg
@@ -943,13 +1019,42 @@ __armv7_mmu_cache_on:
 		mcrne	p15, 0, r1, c3, c0, 0	@ load domain access control
 		mcrne   p15, 0, r6, c2, c0, 2   @ load ttb control
 #endif
+
+/* iamroot
+		mcr	p15, 0, r0, c7, c5, 4	ISB(Instruction Syncronization Barrier):
+						전후 Instruction에 의존성이 있을 경우나 최적화로 인해
+						Instruction의 순서가 변경되었을 경우 동기화를 위해
+						CPU pipeline을 flush하여 이전 코드들이 완료되었음을
+						보장한다. cp15 c7 명령은 deprecated 되었고 ISB라는(혹은 
+						DMB, DSB등) 전용 Instruction이 지원된다. 하지만 기존
+						버전과의 호환성을 위해 사용했다고 commiter가 말했다.
+						아래 명령을 위해 사용됨
+		mcr	p15, 0, r0, c1, c0, 0	MMU enable
+		mrc	p15, 0, r0, c1, c0, 0	cp15를 변경했을 경우 erratum E7 문제(?)에 의해서
+						CPU가 오작동 할 수 있다. 이 문제를 해결하기 위해 
+						일종의 Interval(CPWAIT)을 두려고 두 Instruction을 사용한다.
+						link: http://www.marvell.com/application-processors/pxa-family/assets/pxa_27x_spec_update.pdf 의 E7 부분.
+		mov	r0, #0
+		mcr	p15, 0, r0, c7, c5, 4	@ ISB
+		mov	pc, r12
+*/
 		mcr	p15, 0, r0, c7, c5, 4	@ ISB
 		mcr	p15, 0, r0, c1, c0, 0	@ load control register
 		mrc	p15, 0, r0, c1, c0, 0	@ and read it back
 		mov	r0, #0
 		mcr	p15, 0, r0, c7, c5, 4	@ ISB
 		mov	pc, r12
-
+/* iamroot
+	__armv7_mmu_cache_on을 통해 결과적으로 수정된 SCTRL(r0) 레지스터 값
+	TRE 비트를 0으로 셋
+	I - RR 비트를 1로 셋
+	5bit : CP15BEN
+	3:4 bit : Reserved,
+	2bit : cache enable 
+	A bit를 클리어 : 정렬 체크 사용 안함
+	U bit 1로 set
+	M bit 1로 set
+*/
 __fa526_cache_on:
 		mov	r12, lr
 		mov	r6, #CB_BITS | 0x12	@ U
