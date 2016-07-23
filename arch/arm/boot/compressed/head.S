@@ -302,6 +302,9 @@ restart:	adr	r0, LC0	  /* iamroot LC0의 주소를 r0에 가져옴 */
 		 * delta offset = r0 - r1
 		 * delta offset을 활용하여 실 메모리 주소로 보정한다.
 		 */
+  		/* iamroot
+		 * compressed 커널에서 data영역의 끝 주소를 의미한다.
+		 */
 
 		/*
 		 * We might be running at a different address.  We need
@@ -330,10 +333,15 @@ restart:	adr	r0, LC0	  /* iamroot LC0의 주소를 r0에 가져옴 */
 		orr	r9, r9, lr, lsl #16
 		orr	r9, r9, r10, lsl #24
  
-#ifndef CONFIG_ZBOOT_ROM
+#ifndef CONFIG_ZBOOT_ROM 
+ /* iamroot 
+  * 일반적인 경우 RAM에 로드후 실행하여 Decompress한다. 
+  * 정의되어 있는 경우 ROM/Flash에서 실행하여 RAM으로 Decompress한다.
+  * ROM에서 실행하는것이 매우느리기 때문에 ??? 
+  */
 		/* malloc space is above the relocated stack (64k max) */
-		add	sp, sp, r0
-		add	r10, sp, #0x10000
+		add	sp, sp, r0  /* iamroot sp에 delta offset을 더하여 주소갑을 보정해줌   */
+		add	r10, sp, #0x10000  /* iamroot  r10 이 스택을 가리키고 스택 사이즈를 0x10000으로. 압축해제를 위해 공간을 할당해 준다.*/
 #else
 		/*
 		 * With ZBOOT_ROM the bss/stack is non relocatable,
@@ -342,20 +350,20 @@ restart:	adr	r0, LC0	  /* iamroot LC0의 주소를 r0에 가져옴 */
 		 */
 		mov	r10, r6
 #endif
-
+		/* iamroot r5를 dtb size를 나타내는 레지스터로 사용하며 0로 초기화한다. */
 		mov	r5, #0			@ init dtb size to 0
 #ifdef CONFIG_ARM_APPENDED_DTB
 /*
  *   r0  = delta
  *   r2  = BSS start
- *   r3  = BSS end
+ *   r3  = BSS end줌
  *   r4  = final kernel address (possibly with LSB set)
  *   r5  = appended dtb size (still unknown)
  *   r6  = _edata
  *   r7  = architecture ID
  *   r8  = atags/device tree pointer
  *   r9  = size of decompressed image
- *   r10 = end of this image, including  bss/stack/malloc space if non XIP
+ *   r10 = end of this image, includin조g  bss/stack/malloc space if non XIP
  *   r11 = GOT start
  *   r12 = GOT end
  *   sp  = stack pointer
@@ -364,6 +372,11 @@ restart:	adr	r0, LC0	  /* iamroot LC0의 주소를 r0에 가져옴 */
  * dtb data will get relocated along with the kernel if necessary.
  */
 
+		/* iamroot 
+		 * _edata의 처음 부분을 읽어 Magic Number를 비교한다.
+		 * Magic이 DTB의 Magic인지 확인한다.
+		 * linux/Documentation/devicetree/booting-without-of.txt 의 line 359 참조
+		 */
 		ldr	lr, [r6, #0]
 #ifndef __ARMEB__
 		ldr	r1, =0xedfe0dd0		@ sig is 0xd00dfeed big endian
@@ -476,10 +489,16 @@ dtb_check_done:
 		add	r10, r10, #16384
 		cmp	r4, r10
 		bhs	wont_overwrite
+		/* iamroot PTE가 overwrite 되는 것을 방지하기위해 크기비교 */
 		add	r10, r4, r9
 		adr	r9, wont_overwrite
 		cmp	r10, r9
 		bls	wont_overwrite
+		/* iamroot wont_overwrite 가 overwrite 되는 것을 방지하기위해 크기 비교 */
+		/* iamroot 
+		 * 현재 커널의 위아래 메모리 영역을 확인한다. 
+		 * Overwrite 된다고 판단된경우 아래 코드를 실행하게 된다.
+		 */ 
 
 /*
  * Relocate ourselves past the end of the decompressed kernel.
@@ -493,12 +512,23 @@ dtb_check_done:
 		 * the relocation code added. This avoids overwriting
 		 * ourself when the offset is small.
 		 */
+		/* iamroot
+		 * Compressed kernel 코드를 decompressed kernel 위로 옮기기 위해
+		 * 현재 decompressed kernel의 끝에서 256 byte 만큼 더해준다.
+		 * 또 32바이트씩 copy하면서 overwrite될 가능성과 cache flush code에서 
+		 * 문제가 발생할 확률이 있어서 relocation code size 만큼 더해준다. 
+		 * 그다음 256 byte boundary로 맞춰준다.
+		 */
 		add	r10, r10, #((reloc_code_end - restart + 256) & ~255)
 		bic	r10, r10, #255
 
 		/* Get start of code we want to copy and align it down. */
+		/* iamroot 
+		 * 10000(2) 는 메모리주소값 관점으로 보면 32byte 단위.
+		 * align을 하는 이유는 cache의 입출력 단위가 32byte이기 때문이다.(속도가 빠르다)
+		 */
 		adr	r5, restart
-		bic	r5, r5, #31
+		bic	r5, r5, #31	/* iamroot #31 = 0x1f = 00011111 */
 
 /* Relocate the hyp vector base if necessary */
 #ifdef CONFIG_ARM_VIRT_EXT
@@ -513,20 +543,29 @@ dtb_check_done:
 		bl	__hyp_set_vectors
 1:
 #endif
-
 		sub	r9, r6, r5		@ size to copy
 		add	r9, r9, #31		@ rounded up to a multiple
 		bic	r9, r9, #31		@ ... of 32 bytes
+		/* iamroot 현재r9는 restart 부터 _edata 까지의 크기를 32byte로 align 한 size 값. */
 		add	r6, r9, r5
+		/* iamroot r6는 복사를 시작할 source 주소가 된다. */
 		add	r9, r9, r10
+		/* iamroot r9은 복사할 destination 주소가 된다. */
 
+		/* iamroot
+		 * source(r6 = _edata)에서 4byte씩 주소값을 감소시키며 8개의 값을 읽어온다.
+		 * 하나의 ldmdb 명령으로 총 32 byte를읽어 {r0 - r3, r10 - r12, lr} 에 저장한다. 
+		 * {r0 - r3, r10 - r12, lr} 레지스터에 있는 32byte 값을 
+		 * 다시 destination(r9)이 가리키는 주소값에 쓴다.
+		 */
 1:		ldmdb	r6!, {r0 - r3, r10 - r12, lr}
 		cmp	r6, r5
 		stmdb	r9!, {r0 - r3, r10 - r12, lr}
 		bhi	1b
 
 		/* Preserve offset to relocated code. */
-		sub	r6, r9, r6
+		sub	r6, r9, r6 /* iamroot 현재 실행중인 코드에서 복사한 코드로의 offset 
+				      정확하게 다음 instruction으로 옮겨가기 위해 사용한다.*/
 
 #ifndef CONFIG_ZBOOT_ROM
 		/* cache_clean_flush may use the stack, so relocate it */
@@ -535,6 +574,9 @@ dtb_check_done:
 
 		bl	cache_clean_flush
 
+		/* iamroot
+		 * 복사된 코드의 restart 실행
+		 */
 		badr	r0, restart
 		add	r0, r0, r6
 		mov	pc, r0
@@ -553,7 +595,10 @@ wont_overwrite:
  *   r12 = GOT end
  *   sp  = stack pointer
  */
-		orrs	r1, r0, r5
+ 		/* iamroot 
+		 * 
+		 */
+		orrs	r1, r0, r5  
 		beq	not_relocated
 
 		add	r11, r11, r0

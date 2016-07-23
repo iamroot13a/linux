@@ -4,3 +4,8 @@ ONFIG_AUTO_ZRELADDR    x
 CONFIG_CPU_CP15        o
 CONFIG_CPU_DCACHE_WRITETHROUGH      o
 CONFIG_ZBOOT_ROM       x
+CONFIG_ARM_APPENDED_DTB  x 
+	 // 라즈베리파이에서 기본 Config로 정의되어있지 않지만 지원한다. 
+	 // 그냥 DTB인지 APPENDED DTB인지의 차이
+	 
+
