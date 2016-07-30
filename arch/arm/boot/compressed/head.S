@@ -1465,14 +1465,27 @@ __armv6_mmu_cache_flush:
 
 __armv7_mmu_cache_flush:
 		tst	r4, #1
-		bne	iflush
+		bne	iflush		/* @Iamroot: mmu가 꺼져있으면 분기 
+						 * 재배치하기 전 cache를 지우고 간다? Dcache에 있는 데이터를
+						 * 모두 flush한 후 main memory에서 가져오기 위해
+						 */
 		mrc	p15, 0, r10, c0, c1, 5	@ read ID_MMFR1
 		tst	r10, #0xf << 16		@ hierarchical cache (ARMv7)
+								/* @Iamroot: L1 Harvard cache와 비교 */
 		mov	r10, #0
 		beq	hierarchical
 		mcr	p15, 0, r10, c7, c14, 0	@ clean+invalidate D
 		b	iflush
 hierarchical:
+		/* @Iamroot :
+		mcr	p15, 0, r10, c7, c10, 5	 @ Data Memory Barrier: Core사이의 data 상태를 맞춰준다. ISB와 유사
+		stmfd	sp!, {r0-r7, r9-r11} @ 
+		mrc	p15, 1, r0, c0, c0, 1	@
+		ands	r3, r0, #0x7000000	@
+		mov	r3, r3, lsr #23		@ 
+		beq	finished		@ 
+		mov	r10, #0			@ 
+		*/
 		mcr	p15, 0, r10, c7, c10, 5	@ DMB
 		stmfd	sp!, {r0-r7, r9-r11}
 		mrc	p15, 1, r0, c0, c0, 1	@ read clidr
