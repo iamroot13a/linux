@@ -248,13 +248,17 @@ static void *malloc(int size)
        if (size < 0)
 		error("Malloc error");
        if (!malloc_ptr)
-		malloc_ptr = free_mem_ptr;
+		malloc_ptr = free_mem_ptr; /* free_mem_ptr (==sp)*/
 
-       malloc_ptr = (malloc_ptr + 3) & ~3;     /* Align */
+       malloc_ptr = (malloc_ptr + 3) & ~3;     /* Align */ /*4Byte단위*/
 
        p = (void *)malloc_ptr;
        malloc_ptr += size;
 
+       /* @Iamroot
+	* free_mem_end_ptr = sp + 64KB
+	* Stack의 시작주소와 Heap의 시작주소는 같은 지점에서 반대방향으로 성장한다
+	*/
        if (free_mem_end_ptr && malloc_ptr >= free_mem_end_ptr)
 		error("Out of memory");
 

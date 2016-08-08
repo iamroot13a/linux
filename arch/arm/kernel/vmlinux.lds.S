@@ -17,7 +17,7 @@
 #define PROC_INFO							\
 	. = ALIGN(4);							\
 	VMLINUX_SYMBOL(__proc_info_begin) = .;				\
-	*(.proc.info.init)						\
+	*(.proc.info.init)						\	/*arch/arm/mm/proc-v7.S의 .proc.info.init 섹션을 불러온다*/
 	VMLINUX_SYMBOL(__proc_info_end) = .;
 
 #define HYPERVISOR_TEXT							\
@@ -84,7 +84,7 @@ SECTIONS
 		*(.text.fixup)
 		*(__ex_table)
 #endif
-#ifndef CONFIG_SMP_ON_UP
+#ifndef CONFIG_SMP_ON_UP	
 		*(.alt.smp.init)
 #endif
 		*(.discard)

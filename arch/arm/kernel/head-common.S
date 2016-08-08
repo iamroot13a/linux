@@ -151,17 +151,28 @@ ENDPROC(lookup_processor_type)
  */
 __lookup_processor_type:
 	adr	r3, __lookup_processor_type_data
-	ldmia	r3, {r4 - r6}
+	ldmia	r3, {r4 - r6}			/*@Iamroot
+						 * r4 = .
+						 * r5 = __proc_info_begin
+						 * r6 = __proc_info_end
+						 */
 	sub	r3, r3, r4			@ get offset between virt&phys
 	add	r5, r5, r3			@ convert virt addresses to
 	add	r6, r6, r3			@ physical address space
-1:	ldmia	r5, {r3, r4}			@ value, mask
+	/*@Iamroot
+	 * 이제 r5, r6은 각각 __proc_info_begin과 __proc_info_end의 Physical Address를
+	 * 가지고 있다.
+	 */
+1:	ldmia	r5, {r3, r4}			@ value, mask 
+						/* proc_info 구조체로부터
+						 * cpu value, cpu mask를 r3, r4로 읽어온다.
+						 */
 	and	r4, r4, r9			@ mask wanted bits
-	teq	r3, r4
-	beq	2f
-	add	r5, r5, #PROC_INFO_SZ		@ sizeof(proc_info_list)
-	cmp	r5, r6
-	blo	1b
+	teq	r3, r4				/* value와 mask 비교*/
+	beq	2f				/* cpu를 판별하여 일치하면 2f로 분기*/
+	add	r5, r5, #PROC_INFO_SZ		@ sizeof(proc_info_list) /* r5에 proc_info_list 구조체 크기만큼 더함*/
+	cmp	r5, r6				/* r5(proc_info_begin + PROC_INFO_SZ)와 r6(proc_info_end)를 비교 */
+	blo	1b				/* r5가 작으면 1b로 돌아가 루프를 돈다(새로 proc_info값을 구함) */
 	mov	r5, #0				@ unknown processor
 2:	ret	lr
 ENDPROC(__lookup_processor_type)

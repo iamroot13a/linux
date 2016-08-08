@@ -574,9 +574,6 @@ dtb_check_done:
 
 		bl	cache_clean_flush	
 
-		/* iamroot
-		   rcExpl Toggling
-		 */
 		badr	r0, restart
 		add	r0, r0, r6
 		mov	pc, r0
@@ -668,13 +665,26 @@ not_relocated:	mov	r0, #0                  @ Iamroot: 이 코드가 있어야 �
  *   r7  = architecture ID
  *   r8  = atags pointer
  */
+		/*
+		 * @Iamroot
+		 * r0 <= kernel 시작 주소(decompressed kernl)
+		 * r1 <= stack pointer 
+		 * stack pointer에 64kb만큼 더한 값을 r2에 더한다. (Heap 영역)
+		 */
 		mov	r0, r4
 		mov	r1, sp			@ malloc space above stack
 		add	r2, sp, #0x10000	@ 64k max
-		mov	r3, r7
+		mov	r3, r7			/* architecture ID*/
+		/*
+		 * @Iamroot
+		 * 이 레지스터들(r0-r3)은 decompress_kernel함수(c function)의 parameters로 사용된다.
+		 * r0는 ARM calling convention에 의해 C함수에서 return 값으로 사용된다.
+		 * lr은 return pointer(복귀 주소) 
+		 */
 		bl	decompress_kernel
-		bl	cache_clean_flush
-		bl	cache_off
+		bl	cache_clean_flush	/*@Iamroot: 압축 풀기 위해서 cache_on했던 것을 이제 끄기 전에 clean_flush*/
+		bl	cache_off		/*@Iamroot: decompressed Kernel 소스의 처음 진입조건이 mmu off and cache off*/
+		
 		mov	r1, r7			@ restore architecture number
 		mov	r2, r8			@ restore atags pointer
 
@@ -696,7 +706,7 @@ not_relocated:	mov	r0, #0                  @ Iamroot: 이 코드가 있어야 �
 		.align	2
 .L__hyp_reentry_vectors_offset:	.long	__hyp_reentry_vectors - .
 #else
-		b	__enter_kernel
+		b	__enter_kerneD Tree Toggling
 #endif
 
 		.align	2
@@ -1145,7 +1155,7 @@ __common_mmu_cache_on:
  *  r12 = corrupted
  */
 
-call_cache_fn:	adr	r12, proc_types		/* @Iamroot : architecture에 맞는 processor type주소를
+		call_cache_fn:	adr	r12, proc_types		/* @Iamroot : architecture에 맞는 processor type주소를
 						 * 가져온다.
 						 */
 
@@ -1324,8 +1334,8 @@ proc_types:
 		W(b)	__armv4_mmu_cache_off
 		W(b)	__armv6_mmu_cache_flush
 
-		.word	0x000f0000		@ new CPU Id
-		.word	0x000f0000
+		.word	0x000f0000		@ new CPU Id /* ARMv7의 경우 따로 정의 되어 있지 않다.*/
+		.word	0x000f0000		/* masking value*/
         /** @iamroot 
          * armv7이라고 가정
          **/
@@ -1746,7 +1756,7 @@ __hyp_reentry_vectors:
 
 __enter_kernel:
 		mov	r0, #0			@ must be 0
- ARM(		mov	pc, r4		)	@ call kernel
+ ARM(		mov	pc, r4		)	@ call kernel /*decompressed kernel의 시작점으로 가기 위해*/
  M_CLASS(	add	r4, r4, #1	)	@ enter in Thumb mode for M class
  THUMB(		bx	r4		)	@ entry point is always ARM for A/R classes
 

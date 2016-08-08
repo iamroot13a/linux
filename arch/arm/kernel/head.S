@@ -65,7 +65,15 @@
  * r1 = machine nr, r2 = atags or dtb pointer.
  *
  * This code is mostly position independent, so if you link the kernel at
- * 0xc0008000, you call this at __pa(0xc0008000).
+ * 0xc0008000, you call this at __pa(0xc0008000).	
+	/*@Iamroot 
+	 * __pa : build time에 결정되는 Physical Address. 지금은 kernel이 어디 위치에
+	 *  돌아가는지 정확하게 알지만 Position Independent code로 작성함.
+	 * 앞으로 Kernel이 시작되면서 mmu와 cache, 그리고 가상 메모리까지 설정할것이다. 
+	 * Virtual Address 에서는 "c000 : user 영역과 kernel 영역의 경계"이 말이 맞는데,
+	 * 여기서는 Physical Address이므로 상관 X. 
+	 * 현 architecture DRAM의 시작주소가 단지 0xc0000000일뿐.
+	 */
  *
  * See linux/arch/arm/tools/mach-types for the complete list of machine
  * numbers for r1.
@@ -77,6 +85,10 @@
 	.arm
 
 	__HEAD
+	/*@Iamroot
+         * #define __HEAD		.section	".head.text","ax"
+	 * ARMv7 Build시decompressed Kernel의 진짜시작주소 c0008000
+	 */
 ENTRY(stext)
  ARM_BE8(setend	be )			@ ensure we are in BE8 mode
 
@@ -97,6 +109,9 @@ ENTRY(stext)
  THUMB( it	eq )		@ force fixup-able long branch encoding
 	beq	__error_p			@ yes, error 'p'
 
+/*@Iamroot
+ * LPAE(Large Physical Address Extensions)
+ */
 #ifdef CONFIG_ARM_LPAE
 	mrc	p15, 0, r3, c0, c1, 4		@ read ID_MMFR0
 	and	r3, r3, #0xf			@ extract VMSA support
