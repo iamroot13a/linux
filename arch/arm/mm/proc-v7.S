@@ -268,7 +268,6 @@ __v7_ca9mp_setup:
 __v7_cr7mp_setup:
 	mov	r10, #(1 << 0)			@ Cache/TLB ops broadcasting
 	b	1f
-/*@Iamroot next week */
 __v7_ca7mp_setup:
 __v7_ca12mp_setup:
 __v7_ca15mp_setup:
@@ -528,10 +527,13 @@ __v7_setup_stack:
 	/* @Iamroot
 	 * CONFIG_SMP 설정여부 그리고 실제 실행환경이 SMP냐 UP냐에 따라서
 	 * ALT_SMP, ALT_UP 실행방식이 달라진다.
-	 * 1) CONFIG_SMP 설정되어 있지 않다면 -> ALT_SMP 무시, ALT_UP용 instruction만 수행
+	 * 1) CONFIG_SMP 설정되어 있지 않다면
+	 *	-> ALT_SMP 무시, ALT_UP용 instruction만 수행
 	 * 2) CONFIG_SMP 설정되어있다면
-	 *	-a) 실행platform이 SMP환경이 맞다 -> ALT_SMP의 instruction 수행, 
-	 *	-b) 실행platform이 UP환경이다.    -> ALT_SMP instr 위치에 UP용 instruction으로 교체되어 수행
+	 *	-a) 실행platform이 SMP환경이 맞다
+	 *		-> ALT_SMP의 instruction 수행, 
+	 *	-b) 실행platform이 UP환경이다.   
+	 *		-> ALT_SMP instr 위치에 UP용 instruction으로 교체되어 수행
 	 */
 	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
 			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)

@@ -26,11 +26,24 @@
 
 #ifdef CONFIG_MMU
 		.macro	addruart_current, rx, tmp1, tmp2
+		/*@Iamroot
+		 * 
+		 *	.macro	addruart, rp, rv, tmp
+		 *	ldr	\rp, =CONFIG_DEBUG_UART_PHYS
+		 *	ldr	\rv, =CONFIG_DEBUG_UART_VIRT
+		 *	.endm
+		 *      CONFIG_DEBUG_UART_PHYS,
+		 *      CONFIG_DEBUG_UART_VIRT 값은 미리 상수로 정해졌다.
+		 */
 		addruart	\tmp1, \tmp2, \rx
-		mrc		p15, 0, \rx, c1, c0
+		mrc		p15, 0, \rx, c1, c0	/*system ctrol register를 읽는다*/
 		tst		\rx, #1
-		moveq		\rx, \tmp1
-		movne		\rx, \tmp2
+		moveq		\rx, \tmp1		/*if mmu disable -> 
+							 *  \rx = CONFIG_DEBUG_UART_PHYS
+							 */
+		movne		\rx, \tmp2		/*   mmu enable  -> 
+							 *    \rx = CONFIG_DEBUG_UART_VIRT
+							 */
 		.endm
 
 #else /* !CONFIG_MMU */
@@ -87,7 +100,7 @@ ENTRY(printascii)
 		moveq	r1, #'\r'
 		beq	1b
 2:		teq	r0, #0
-		ldrneb	r1, [r0], #1
+		ldrneb	r1, [r0], #1	/* ldrb := ldr하되, 1byte만. ldr<cond>b 형식으로 쓴다*/
 		teqne	r1, #0
 		bne	1b
 		ret	lr

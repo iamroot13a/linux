@@ -522,8 +522,15 @@ THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 #if __LINUX_ARM_ARCH__ < 6
 	mov\c	pc, \reg
 #else
-	.ifeqs	"\reg", "lr"
-	bx\c	\reg
+	.ifeqs	"\reg", "lr"	/* eqs: "\reg"의 str값이 "lr"이 맞느냐*/
+	bx\c	\reg		/* b'x': x? ARM코드->THUMB코드 변환가능
+				 * 그 역도 가능, ARM코드면 jmp뛰는 주소가
+				 * 0으로 끝나고 Thumb코드는 1로 끝난다.
+				 * 그냥 b를 해버리면
+				 * thumb코드와 arm코드 decoding룰이 다르니까
+				 * instruction이 에러가난다.
+				 * x는 eXchange를 의미한다.
+				 */
 	.else
 	mov\c	pc, \reg
 	.endif

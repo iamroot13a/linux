@@ -51,7 +51,7 @@ __vet_atags:
 	ldr	r5, [r2, #0]
 #ifdef CONFIG_OF_FLATTREE
 	ldr	r6, =OF_DT_MAGIC		@ is it a DTB?
-	cmp	r5, r6
+	cmp	r5, r6  /* r5 == 진짜로 써진 magic no, r6 == 정의한 magic no*/
 	beq	2f
 #endif
 	cmp	r5, #ATAG_CORE_SIZE		@ is first tag ATAG_CORE?
@@ -64,7 +64,8 @@ __vet_atags:
 
 2:	ret	lr				@ atag/dtb pointer is ok
 
-1:	mov	r2, #0
+1:	mov	r2, #0				/*DTB도 없고 ATAG도 없으면
+						 * 0을 return */
 	ret	lr
 ENDPROC(__vet_atags)
 
@@ -220,10 +221,18 @@ __error:
 /*
  * Turn the screen red on a error - RiscPC only.
  */
-	mov	r0, #0x02000000
+	mov	r0, #0x02000000		/* <08.20 google.docs - arm_immediate>참고
+					 * 0x02000000 에서 맨앞 8비트 02는
+					 * Operand2에서immediate value로 취급(MAX: 8bit)
+					 * 아래의 r3을  mov r3, #0x11111111로 하면 에러가 난다.
+
+					 * 0x02000000은Acorn RiscPC architectures에서 사용하는
+					 * Video ram의 시작주소 
+					 */
 	mov	r3, #0x11
-	orr	r3, r3, r3, lsl #8
-	orr	r3, r3, r3, lsl #16
+	orr	r3, r3, r3, lsl #8	/* r3 == 0x00001111 */
+	orr	r3, r3, r3, lsl #16	/* r3 == 0x11111111 */
+
 	str	r3, [r0], #4
 	str	r3, [r0], #4
 	str	r3, [r0], #4

@@ -106,11 +106,23 @@ ENTRY(stext)
 	mrc	p15, 0, r9, c0, c0		@ get processor id
 	bl	__lookup_processor_type		@ r5=procinfo r9=cpuid
 	movs	r10, r5				@ invalid processor (r5=0)?
+						/*
+						 * if r5 == 0: Z bit set(Z)
+						 * 아래의 beq __error_p가 실행
+						 */
  THUMB( it	eq )		@ force fixup-able long branch encoding
 	beq	__error_p			@ yes, error 'p'
 
 /*@Iamroot
  * LPAE(Large Physical Address Extensions)
+ * 32bit arch에서는 최대 메모리 어드레싱 4GB, 그러나 실제로는 거의 2~3GB밖에 사용할 수 없다. 
+ * 
+ * LPAE를 활성화하면 물리주소의 비트수를 32bit-> 40bit까지 늘릴 수 있다.
+ * 물리주소는 최대 2^40 (== 1TB), Virtual Memory는 32bit
+ * Q) HW적인 조정이 필요하나? 
+ * A) No, cpu가 지원만 해준다면, 커널에서 특정 비트 하나 set함으로써 LPAE를 활성화할 수 있다.
+ *
+ * Raspberry Pi2는 LPAE가 설정되어있지 않으므로 LPAE부분은 보지 않고 skip.
  */
 #ifdef CONFIG_ARM_LPAE
 	mrc	p15, 0, r3, c0, c1, 4		@ read ID_MMFR0
@@ -120,15 +132,27 @@ ENTRY(stext)
 	blo	__error_lpae			@ only classic page table format
 #endif
 
+/*@Iamroot
+ * CONFIG_XIP_KERNEL: Flash Memory에서 실행되는 것을 지원해주냐 안하느냐
+ * 설정 안되어있다고 보고 진행
+ */
 #ifndef CONFIG_XIP_KERNEL
 	adr	r3, 2f
 	ldmia	r3, {r4, r8}
 	sub	r4, r3, r4			@ (PHYS_OFFSET - PAGE_OFFSET)
 	add	r8, r8, r4			@ PHYS_OFFSET
+	/*
+	 * r3 = 2f's physical address
+	 * r4 = .
+	 * r4 = (r3 - r4) (==delta) 
+		Q: delta값 구하는로직은 매번똑같은데 왜 자꾸 계속구함???
+		A: delta전용특정 레지스터나 스택 이용하는건 비효율적일 것.
+	 * r8 = 0xc000 0000 (==PAGE_OFFSET, 즉 커널의 가상메모리 시작점)
+	 * r8 = (r8 + r4) (== 0xc000 0000 + delta)
+	 */
 #else
 	ldr	r8, =PLAT_PHYS_OFFSET		@ always constant in this case
 #endif
-
 	/*
 	 * r1 = machine no, r2 = atags or dtb,
 	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo
@@ -178,7 +202,9 @@ ENDPROC(stext)
 	.ltorg
 #ifndef CONFIG_XIP_KERNEL
 2:	.long	.
-	.long	PAGE_OFFSET
+	.long	PAGE_OFFSET			/* Kernel Image의 가상메모리 시작주소 
+						 * PAGE_OFFSET == 0xc0000000
+						 */
 #endif
 
 /*
@@ -521,8 +547,10 @@ ENDPROC(__turn_mmu_on)
 __fixup_smp:
 	and	r3, r9, #0x000f0000	@ architecture version
 	teq	r3, #0x000f0000		@ CPU ID supported?
+					/* if r3 == 0x000f0000
+					      Z bit SET */
 	bne	__fixup_smp_on_up	@ no, assume UP
-
+/* ARMv7에서는 Z bit가 SET되므로 branch 하지 않고 바로 내려간다*/
 	bic	r3, r9, #0x00ff0000
 	bic	r3, r3, #0x0000000f	@ mask 0xff00fff0
 	mov	r4, #0x41000000
@@ -534,20 +562,27 @@ __fixup_smp:
 	mrc	p15, 0, r0, c0, c0, 5	@ read MPIDR
 	and	r0, r0, #0xc0000000	@ multiprocessing extensions and
 	teq	r0, #0x80000000		@ not part of a uniprocessor system?
+					/* Ubit(==bit[30])를 보고 SMP인지 아닌지 점검
+					 * Ubit == 0 이면 SMP, UBit== 1 이면 UP
+					 * 현재 r0이 SMP이면 r0 == 0x80000000
+					 *            UP이면 r0 == 0xc0000000
+					 */
 	bne    __fixup_smp_on_up	@ no, assume UP
 
 	@ Core indicates it is SMP. Check for Aegis SOC where a single
 	@ Cortex-A9 CPU is present but SMP operations fault.
 	mov	r4, #0x41000000
 	orr	r4, r4, #0x0000c000
-	orr	r4, r4, #0x00000090
+	orr	r4, r4, #0x00000090	/* r4 == 0x4100c090 */
 	teq	r3, r4			@ Check for ARM Cortex-A9
 	retne	lr			@ Not ARM Cortex-A9,
 
 	@ If a future SoC *does* use 0x0 as the PERIPH_BASE, then the
 	@ below address check will need to be #ifdef'd or equivalent
 	@ for the Aegis platform.
+	/**/
 	mrc	p15, 4, r0, c15, c0	@ get SCU base address
+					/* c15에 대해서는 cpu에 따라 정의가 달라진다.*/
 	teq	r0, #0x0		@ '0' on actual UP A9 hardware
 	beq	__fixup_smp_on_up	@ So its an A9 UP
 	ldr	r0, [r0, #4]		@ read SCU Config
@@ -580,10 +615,16 @@ smp_on_up:
 
 	.text
 __do_fixup_smp_on_up:
+	/* r4 = __smpalt_begin의 물리주소, r5 = __smpalt_end의 물리 주소*/	
 	cmp	r4, r5
 	reths	lr
 	ldmia	r4!, {r0, r6}
- ARM(	str	r6, [r0, r3]	)
+	/*
+	 * r0 == 9998 label physical address
+	 * r6 == 9997 label에 있는 해당 instr 데이터
+	 * Right Here!
+	 */
+ ARM(	str	r6, [r0, r3]	) /*proc_type*/
  THUMB(	add	r0, r0, r3	)
 #ifdef __ARMEB__
  THUMB(	mov	r6, r6, ror #16	)	@ Convert word order for big-endian.
