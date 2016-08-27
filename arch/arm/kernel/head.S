@@ -594,9 +594,9 @@ ARM_BE8(rev	r0, r0)			@ byteswap if big endian
 __fixup_smp_on_up:
 	adr	r0, 1f
 	ldmia	r0, {r3 - r5}
-	sub	r3, r0, r3
-	add	r4, r4, r3
-	add	r5, r5, r3
+	sub	r3, r0, r3	@Iamroot r3=r0-r3를 저장해서 오프셋 주소를 구한다.
+	add	r4, r4, r3  @Iamroot r4=r4+r3를 저장한다. smpalt_begin의 실제 주소를 구한다.
+	add	r5, r5, r3  @Iamroot r5=r5+r3를 저장한다. smpalt_end의 실제 주소를 구한다.
 	b	__do_fixup_smp_on_up
 ENDPROC(__fixup_smp)
 
@@ -620,11 +620,15 @@ __do_fixup_smp_on_up:
 	reths	lr
 	ldmia	r4!, {r0, r6}
 	/*
-	 * r0 == 9998 label physical address
+	 * r0 == 9998 label's virtual address 
 	 * r6 == 9997 label에 있는 해당 instr 데이터
 	 * Right Here!
 	 */
  ARM(	str	r6, [r0, r3]	) /*proc_type*/
+	/*@Iamroot
+	 * r6 => r0(9998 가상주소) + r3(오프셋)을 넣는다.
+	 * 이렇게 되면 r6은 9998의 실제주소가 된다.
+	 */
  THUMB(	add	r0, r0, r3	)
 #ifdef __ARMEB__
  THUMB(	mov	r6, r6, ror #16	)	@ Convert word order for big-endian.
@@ -661,18 +665,31 @@ ENDPROC(fixup_smp)
  */
 	__HEAD
 __fixup_pv_table:
+	/*@Iamroot
+	 * pv_table은 physical_memory주소에서  virtual_memory주소로 변환하거나
+	 * virtual_memory주소에서 physical_memory주소로 변환시 참조하는 테이블이다.
+	 * 테이블 안에는 pv_stub instruction의 memory주소가 들어있다.
+	 */
 	adr	r0, 1f
 	ldmia	r0, {r3-r7}
-	mvn	ip, #0
-	subs	r3, r0, r3	@ PHYS_OFFSET - PAGE_OFFSET
+	mvn	ip, #0 @Iamroot mov ip, #0xffffffff 와 같은 의미, ip의 의미는 Google Docs 'AAPCS ip(r12 register) 의미' 참고
+	subs	r3, r0, r3	@ PHYS_OFFSET - PAGE(VIRT)_OFFSET; 즉, delta offset이다.
 	add	r4, r4, r3	@ adjust table start address
 	add	r5, r5, r3	@ adjust table end address
 	add	r6, r6, r3	@ adjust __pv_phys_pfn_offset address
 	add	r7, r7, r3	@ adjust __pv_offset address
 	mov	r0, r8, lsr #PAGE_SHIFT	@ convert to PFN
+	/*@Iamroot
+	 * r8 = 0xc0000000로 되어있는데 right shift를 12(PAGE_SHIFT)번을 수행한다.
+	 * 이후, 수행한 값을 r0(Page Frame Number=PFN)에 넣는다.
+	 */
 	str	r0, [r6]	@ save computed PHYS_OFFSET to __pv_phys_pfn_offset
 	strcc	ip, [r7, #HIGH_OFFSET]	@ save to __pv_offset high bits
-	mov	r6, r3, lsr #24	@ constant for add/sub instructions
+	/*Iamroot
+	 * r7 주소+#4에 ip(0xffffffff)를 저장한다. 다만 해당 명령어를 실행하는 조건은 C flag=0
+	 * 하는 이유는???
+	 */
+	mov	r6, r3, lsr #24	@ constant for add/sub instructions 
 	teq	r3, r6, lsl #24 @ must be 16MiB aligned
 THUMB(	it	ne		@ cross section branch )
 	bne	__error

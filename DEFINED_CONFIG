@@ -7,5 +7,6 @@ CONFIG_ZBOOT_ROM       x
 CONFIG_ARM_APPENDED_DTB  x 
 	 // 라즈베리파이에서 기본 Config로 정의되어있지 않지만 지원한다. 
 	 // 그냥 DTB인지 APPENDED DTB인지의 차이
-	 
+CONFIG_SMP_ON_UP        o
+CONFIG_ARM_PATCH_PHYS_VIRT		o
 

@@ -194,7 +194,9 @@ extern const void *__pv_table_begin, *__pv_table_end;
 	"	.popsection\n"				\
 	: "=r" (to)					\
 	: "r" (from), "I" (type))
-
+	/*@Iamroot
+	 *  Google Docs 'arm inline assembly' 참고(1.3.3.3)
+	 */
 #define __pv_stub_mov_hi(t)				\
 	__asm__ volatile("@ __pv_stub_mov\n"		\
 	"1:	mov	%R0, %1\n"			\
