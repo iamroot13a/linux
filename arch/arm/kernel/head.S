@@ -685,12 +685,19 @@ __fixup_pv_table:
 	 */
 	str	r0, [r6]	@ save computed PHYS_OFFSET to __pv_phys_pfn_offset
 	strcc	ip, [r7, #HIGH_OFFSET]	@ save to __pv_offset high bits
-	/*Iamroot
+	/*@Iamroot
 	 * r7 주소+#4에 ip(0xffffffff)를 저장한다. 다만 해당 명령어를 실행하는 조건은 C flag=0
-	 * 하는 이유는???
+	 * 하는 이유는 LPAE(64비트)일 경우를 고려하기 위해서
+	 * subs 연산 결과에서 PHYS_OFFSET가 VIRT_OFFSET보다 작을 때 상위 4바이트를 -1로 세팅함
+	 * PA를 구할 때 delta와 VA를 더하는데 이 때 발생되는 carry를 고려한 연산
+	 * Google Docs '6.4 a carry occurs' 참고
 	 */
 	mov	r6, r3, lsr #24	@ constant for add/sub instructions 
 	teq	r3, r6, lsl #24 @ must be 16MiB aligned
+	/*@Iamroot
+	 * add, sub연산에서 immediate value는 8비트까지 인식이 가능하다.
+	 * 16MB로 aligned가 안되었다면 __error루틴으로 간다. 
+	 */
 THUMB(	it	ne		@ cross section branch )
 	bne	__error
 	str	r3, [r7, #LOW_OFFSET]	@ save to __pv_offset low bits
@@ -712,7 +719,7 @@ __fixup_a_pv_table:
 	ldr	r0, [r6, #HIGH_OFFSET]	@ pv_offset high word
 	ldr	r6, [r6, #LOW_OFFSET]	@ pv_offset low word
 	mov	r6, r6, lsr #24
-	cmn	r0, #1
+	cmn	r0, #1 @Iamroot cmn=adds와 같은 의미(r0=0xffffffff)
 #ifdef CONFIG_THUMB2_KERNEL
 	moveq	r0, #0x200000	@ set bit 21, mov to mvn instruction
 	lsls	r6, #24
@@ -751,9 +758,13 @@ ARM_BE8(rev16	ip, ip)
 	moveq	r0, #0x00004000	@ set bit 22, mov to mvn instruction
 #else
 	moveq	r0, #0x400000	@ set bit 22, mov to mvn instruction
+	/*@Iamroot
+	 * Raspberry pi2가 LITTLE ENDIAN이기 때문에 #else 루틴으로 빠짐
+	 * cmn연산결과 Z플래그 set되기 때문에 moveq 명령어는 실행함 
+	 */
 #endif
 	b	2f
-1:	ldr	ip, [r7, r3]
+1:	ldr	ip, [r7, r3] @Iamroot ip => pv_table_begin의 VIRT_ADDRESS + delta offset(다음주에 계속)
 #ifdef CONFIG_CPU_ENDIAN_BE8
 	@ in BE8, we load data in BE, but instructions still in LE
 	bic	ip, ip, #0xff000000
@@ -769,9 +780,16 @@ ARM_BE8(rev16	ip, ip)
 	orreq	ip, ip, r0	@ mask in offset bits 7-0
 #endif
 	str	ip, [r7, r3]
+	/*@Iamroot
+	 * r4 = PV_TABLE_BEGIN
+	 * r5 = PV_TABLE_END
+	 */
 2:	cmp	r4, r5
 	ldrcc	r7, [r4], #4	@ use branch for delay slot
 	bcc	1b
+	/*@Iamroot
+	 * PV_TABLE_BEGIN부터 주소값을 읽어서 r7에 넣고 r4에 4를 더함
+	 */
 	ret	lr
 #endif
 ENDPROC(__fixup_a_pv_table)

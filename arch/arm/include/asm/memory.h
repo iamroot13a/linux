@@ -196,6 +196,8 @@ extern const void *__pv_table_begin, *__pv_table_end;
 	: "r" (from), "I" (type))
 	/*@Iamroot
 	 *  Google Docs 'arm inline assembly' 참고(1.3.3.3)
+	 * Inline 함수를 사용하는 이유는 Overhead를 줄이기 위해서다.
+	 * PHYS_ADDRESS <-> VIRT_ADDRESS 전환하는 과정이 계속 반복되면 Overhead가 상당히 많이 소요된다.
 	 */
 #define __pv_stub_mov_hi(t)				\
 	__asm__ volatile("@ __pv_stub_mov\n"		\
