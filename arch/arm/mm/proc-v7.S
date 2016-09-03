@@ -513,30 +513,50 @@ __v7_setup_stack:
 	string	cpu_elf_name, "v7"
 	.align
 
+	/* @Iamroot
+	 *  아래의 .proc.info.init 섹션은
+	 *  arch/arm/kernel/vmlinux.lds.S의 *(.proc.info.init)에 삽입될 section
+	 *  이 section을 통해서 arch/arm/include/asm/procinfo.h에 있는
+	 *  struct proc_info_list의 멤버 변수의 값이 초기화 된다.
+	 */
 	.section ".proc.info.init", #alloc
-
 	/*
 	 * Standard v7 proc info content
 	 */
 .macro __v7_proc name, initfunc, mm_mmuflags = 0, io_mmuflags = 0, hwcaps = 0, proc_fns = v7_processor_functions
+	/* @Iamroot
+	 * CONFIG_SMP 설정여부 그리고 실제 실행환경이 SMP냐 UP냐에 따라서
+	 * ALT_SMP, ALT_UP 실행방식이 달라진다.
+	 * 1) CONFIG_SMP 설정되어 있지 않다면
+	 *	-> ALT_SMP 무시, ALT_UP용 instruction만 수행
+	 * 2) CONFIG_SMP 설정되어있다면
+	 *	-a) 실행platform이 SMP환경이 맞다
+	 *		-> ALT_SMP의 instruction 수행, 
+	 *	-b) 실행platform이 UP환경이다.   
+	 *		-> ALT_SMP instr 위치에 UP용 instruction으로 교체되어 수행
+	 */
 	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
 			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
 	ALT_UP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
 			PMD_SECT_AF | PMD_FLAGS_UP | \mm_mmuflags)
 	.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | \
 		PMD_SECT_AP_READ | PMD_SECT_AF | \io_mmuflags
-	initfn	\initfunc, \name
-	.long	cpu_arch_name
-	.long	cpu_elf_name
+	initfn	\initfunc, \name				/*.long	\func - \base		*/
+	.long	cpu_arch_name					/* const char *arch_name	*/
+	.long	cpu_elf_name					/* const char *elf_name		*/
 	.long	HWCAP_SWP | HWCAP_HALF | HWCAP_THUMB | HWCAP_FAST_MULT | \
-		HWCAP_EDSP | HWCAP_TLS | \hwcaps
-	.long	cpu_v7_name
-	.long	\proc_fns
-	.long	v7wbi_tlb_fns
-	.long	v6_user_fns
-	.long	v7_cache_fns
+		HWCAP_EDSP | HWCAP_TLS | \hwcaps		/* unsigned int elf_hwcap	*/
+	.long	cpu_v7_name					/* const char *cpu_name		*/
+	.long	\proc_fns					/* struct processor *proc	*/
+	.long	v7wbi_tlb_fns					/* struct cpu_tlb_fns *tlb	*/
+	.long	v6_user_fns					/* struct cpu_user_fns *user	*/
+	.long	v7_cache_fns					/* struct cpu_cache_fns *cache	*/
 .endm
 
+/* @Iamroot
+ * 각각의 cpu종류에 따라 __v7_proc 매크로를 호출하는 방식을 따로 정의함.
+ * 우리가 살펴볼 cpu는 __v7_ca7mp_proc_info
+ */
 #ifndef CONFIG_ARM_LPAE
 	/*
 	 * ARM Ltd. Cortex A5 processor.

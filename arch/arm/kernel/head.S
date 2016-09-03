@@ -65,7 +65,15 @@
  * r1 = machine nr, r2 = atags or dtb pointer.
  *
  * This code is mostly position independent, so if you link the kernel at
- * 0xc0008000, you call this at __pa(0xc0008000).
+ * 0xc0008000, you call this at __pa(0xc0008000).	
+	/*@Iamroot 
+	 * __pa : build time에 결정되는 Physical Address. 지금은 kernel이 어디 위치에
+	 *  돌아가는지 정확하게 알지만 Position Independent code로 작성함.
+	 * 앞으로 Kernel이 시작되면서 mmu와 cache, 그리고 가상 메모리까지 설정할것이다. 
+	 * Virtual Address 에서는 "c000 : user 영역과 kernel 영역의 경계"이 말이 맞는데,
+	 * 여기서는 Physical Address이므로 상관 X. 
+	 * 현 architecture DRAM의 시작주소가 단지 0xc0000000일뿐.
+	 */
  *
  * See linux/arch/arm/tools/mach-types for the complete list of machine
  * numbers for r1.
@@ -77,6 +85,10 @@
 	.arm
 
 	__HEAD
+	/*@Iamroot
+         * #define __HEAD		.section	".head.text","ax"
+	 * ARMv7 Build시decompressed Kernel의 진짜시작주소 c0008000
+	 */
 ENTRY(stext)
  ARM_BE8(setend	be )			@ ensure we are in BE8 mode
 
@@ -94,9 +106,24 @@ ENTRY(stext)
 	mrc	p15, 0, r9, c0, c0		@ get processor id
 	bl	__lookup_processor_type		@ r5=procinfo r9=cpuid
 	movs	r10, r5				@ invalid processor (r5=0)?
+						/*
+						 * if r5 == 0: Z bit set(Z)
+						 * 아래의 beq __error_p가 실행
+						 */
  THUMB( it	eq )		@ force fixup-able long branch encoding
 	beq	__error_p			@ yes, error 'p'
 
+/*@Iamroot
+ * LPAE(Large Physical Address Extensions)
+ * 32bit arch에서는 최대 메모리 어드레싱 4GB, 그러나 실제로는 거의 2~3GB밖에 사용할 수 없다. 
+ * 
+ * LPAE를 활성화하면 물리주소의 비트수를 32bit-> 40bit까지 늘릴 수 있다.
+ * 물리주소는 최대 2^40 (== 1TB), Virtual Memory는 32bit
+ * Q) HW적인 조정이 필요하나? 
+ * A) No, cpu가 지원만 해준다면, 커널에서 특정 비트 하나 set함으로써 LPAE를 활성화할 수 있다.
+ *
+ * Raspberry Pi2는 LPAE가 설정되어있지 않으므로 LPAE부분은 보지 않고 skip.
+ */
 #ifdef CONFIG_ARM_LPAE
 	mrc	p15, 0, r3, c0, c1, 4		@ read ID_MMFR0
 	and	r3, r3, #0xf			@ extract VMSA support
@@ -105,15 +132,27 @@ ENTRY(stext)
 	blo	__error_lpae			@ only classic page table format
 #endif
 
+/*@Iamroot
+ * CONFIG_XIP_KERNEL: Flash Memory에서 실행되는 것을 지원해주냐 안하느냐
+ * 설정 안되어있다고 보고 진행
+ */
 #ifndef CONFIG_XIP_KERNEL
 	adr	r3, 2f
 	ldmia	r3, {r4, r8}
 	sub	r4, r3, r4			@ (PHYS_OFFSET - PAGE_OFFSET)
 	add	r8, r8, r4			@ PHYS_OFFSET
+	/*
+	 * r3 = 2f's physical address
+	 * r4 = .
+	 * r4 = (r3 - r4) (==delta) 
+		Q: delta값 구하는로직은 매번똑같은데 왜 자꾸 계속구함???
+		A: delta전용특정 레지스터나 스택 이용하는건 비효율적일 것.
+	 * r8 = 0xc000 0000 (==PAGE_OFFSET, 즉 커널의 가상메모리 시작점)
+	 * r8 = (r8 + r4) (== 0xc000 0000 + delta)
+	 */
 #else
 	ldr	r8, =PLAT_PHYS_OFFSET		@ always constant in this case
 #endif
-
 	/*
 	 * r1 = machine no, r2 = atags or dtb,
 	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo
@@ -163,7 +202,9 @@ ENDPROC(stext)
 	.ltorg
 #ifndef CONFIG_XIP_KERNEL
 2:	.long	.
-	.long	PAGE_OFFSET
+	.long	PAGE_OFFSET			/* Kernel Image의 가상메모리 시작주소 
+						 * PAGE_OFFSET == 0xc0000000
+						 */
 #endif
 
 /*
@@ -506,8 +547,10 @@ ENDPROC(__turn_mmu_on)
 __fixup_smp:
 	and	r3, r9, #0x000f0000	@ architecture version
 	teq	r3, #0x000f0000		@ CPU ID supported?
+					/* if r3 == 0x000f0000
+					      Z bit SET */
 	bne	__fixup_smp_on_up	@ no, assume UP
-
+/* ARMv7에서는 Z bit가 SET되므로 branch 하지 않고 바로 내려간다*/
 	bic	r3, r9, #0x00ff0000
 	bic	r3, r3, #0x0000000f	@ mask 0xff00fff0
 	mov	r4, #0x41000000
@@ -519,20 +562,27 @@ __fixup_smp:
 	mrc	p15, 0, r0, c0, c0, 5	@ read MPIDR
 	and	r0, r0, #0xc0000000	@ multiprocessing extensions and
 	teq	r0, #0x80000000		@ not part of a uniprocessor system?
+					/* Ubit(==bit[30])를 보고 SMP인지 아닌지 점검
+					 * Ubit == 0 이면 SMP, UBit== 1 이면 UP
+					 * 현재 r0이 SMP이면 r0 == 0x80000000
+					 *            UP이면 r0 == 0xc0000000
+					 */
 	bne    __fixup_smp_on_up	@ no, assume UP
 
 	@ Core indicates it is SMP. Check for Aegis SOC where a single
 	@ Cortex-A9 CPU is present but SMP operations fault.
 	mov	r4, #0x41000000
 	orr	r4, r4, #0x0000c000
-	orr	r4, r4, #0x00000090
+	orr	r4, r4, #0x00000090	/* r4 == 0x4100c090 */
 	teq	r3, r4			@ Check for ARM Cortex-A9
 	retne	lr			@ Not ARM Cortex-A9,
 
 	@ If a future SoC *does* use 0x0 as the PERIPH_BASE, then the
 	@ below address check will need to be #ifdef'd or equivalent
 	@ for the Aegis platform.
+	/**/
 	mrc	p15, 4, r0, c15, c0	@ get SCU base address
+					/* c15에 대해서는 cpu에 따라 정의가 달라진다.*/
 	teq	r0, #0x0		@ '0' on actual UP A9 hardware
 	beq	__fixup_smp_on_up	@ So its an A9 UP
 	ldr	r0, [r0, #4]		@ read SCU Config
@@ -544,9 +594,9 @@ ARM_BE8(rev	r0, r0)			@ byteswap if big endian
 __fixup_smp_on_up:
 	adr	r0, 1f
 	ldmia	r0, {r3 - r5}
-	sub	r3, r0, r3
-	add	r4, r4, r3
-	add	r5, r5, r3
+	sub	r3, r0, r3	@Iamroot r3=r0-r3를 저장해서 오프셋 주소를 구한다.
+	add	r4, r4, r3  @Iamroot r4=r4+r3를 저장한다. smpalt_begin의 실제 주소를 구한다.
+	add	r5, r5, r3  @Iamroot r5=r5+r3를 저장한다. smpalt_end의 실제 주소를 구한다.
 	b	__do_fixup_smp_on_up
 ENDPROC(__fixup_smp)
 
@@ -565,10 +615,20 @@ smp_on_up:
 
 	.text
 __do_fixup_smp_on_up:
+	/* r4 = __smpalt_begin의 물리주소, r5 = __smpalt_end의 물리 주소*/	
 	cmp	r4, r5
 	reths	lr
 	ldmia	r4!, {r0, r6}
- ARM(	str	r6, [r0, r3]	)
+	/*
+	 * r0 == 9998 label's virtual address 
+	 * r6 == 9997 label에 있는 해당 instr 데이터
+	 * Right Here!
+	 */
+ ARM(	str	r6, [r0, r3]	) /*proc_type*/
+	/*@Iamroot
+	 * r6 => r0(9998 가상주소) + r3(오프셋)을 넣는다.
+	 * 이렇게 되면 r6은 9998의 실제주소가 된다.
+	 */
  THUMB(	add	r0, r0, r3	)
 #ifdef __ARMEB__
  THUMB(	mov	r6, r6, ror #16	)	@ Convert word order for big-endian.
@@ -605,19 +665,41 @@ ENDPROC(fixup_smp)
  */
 	__HEAD
 __fixup_pv_table:
+	/*@Iamroot
+	 * pv_table은 physical_memory주소에서  virtual_memory주소로 변환하거나
+	 * virtual_memory주소에서 physical_memory주소로 변환시 참조하는 테이블이다.
+	 * 테이블 안에는 pv_stub instruction의 memory주소가 들어있다.
+	 * fixup_pv_table은 delta offset, page frame number, page start/end address 값을 구하는 역할을 수행한다.
+	 * fixup_a_pv_table은 pv_table의 __PV_BITS_31_24(memory.h)를 계산된 delta offset 주소로 변경하는 역할을 수행한다.
+	 */
 	adr	r0, 1f
 	ldmia	r0, {r3-r7}
-	mvn	ip, #0
-	subs	r3, r0, r3	@ PHYS_OFFSET - PAGE_OFFSET
+	mvn	ip, #0 @Iamroot mov ip, #0xffffffff 와 같은 의미, ip의 의미는 Google Docs 'AAPCS ip(r12 register) 의미' 참고
+	subs	r3, r0, r3	@ PHYS_OFFSET - PAGE(VIRT)_OFFSET; 즉, delta offset이다.
 	add	r4, r4, r3	@ adjust table start address
 	add	r5, r5, r3	@ adjust table end address
 	add	r6, r6, r3	@ adjust __pv_phys_pfn_offset address
 	add	r7, r7, r3	@ adjust __pv_offset address
 	mov	r0, r8, lsr #PAGE_SHIFT	@ convert to PFN
+	/*@Iamroot
+	 * r8 = 0xc0000000로 되어있는데 right shift를 12(PAGE_SHIFT)번을 수행한다.
+	 * 이후, 수행한 값을 r0(Page Frame Number=PFN)에 넣는다.
+	 */
 	str	r0, [r6]	@ save computed PHYS_OFFSET to __pv_phys_pfn_offset
 	strcc	ip, [r7, #HIGH_OFFSET]	@ save to __pv_offset high bits
-	mov	r6, r3, lsr #24	@ constant for add/sub instructions
+	/*@Iamroot
+	 * r7 주소+#4에 ip(0xffffffff)를 저장한다. 다만 해당 명령어를 실행하는 조건은 C flag=0
+	 * 하는 이유는 LPAE(64비트)일 경우를 고려하기 위해서
+	 * subs 연산 결과에서 PHYS_OFFSET가 VIRT_OFFSET보다 작을 때 상위 4바이트를 -1로 세팅함
+	 * PA를 구할 때 delta와 VA를 더하는데 이 때 발생되는 carry를 고려한 연산
+	 * Google Docs '6.4 a carry occurs' 참고
+	 */
+	mov	r6, r3, lsr #24	@ constant for add/sub instructions 
 	teq	r3, r6, lsl #24 @ must be 16MiB aligned
+	/*@Iamroot
+	 * add, sub연산에서 immediate value는 8비트까지 인식이 가능하다.
+	 * 16MB로 aligned가 안되었다면 __error루틴으로 간다. 
+	 */
 THUMB(	it	ne		@ cross section branch )
 	bne	__error
 	str	r3, [r7, #LOW_OFFSET]	@ save to __pv_offset low bits
@@ -639,7 +721,7 @@ __fixup_a_pv_table:
 	ldr	r0, [r6, #HIGH_OFFSET]	@ pv_offset high word
 	ldr	r6, [r6, #LOW_OFFSET]	@ pv_offset low word
 	mov	r6, r6, lsr #24
-	cmn	r0, #1
+	cmn	r0, #1 @Iamroot cmn=adds와 같은 의미(r0=0xffffffff)
 #ifdef CONFIG_THUMB2_KERNEL
 	moveq	r0, #0x200000	@ set bit 21, mov to mvn instruction
 	lsls	r6, #24
@@ -671,6 +753,9 @@ ARM_BE8(rev16	ip, ip)
 	strh	ip, [r7]
 2:	cmp	r4, r5
 	ldrcc	r7, [r4], #4	@ use branch for delay slot
+	/*@Iamroot
+	 이쪽에서부터 런타임이 시작될 때 /arch/arm/include/asm/memory.h에 있는 'static inline phys_addr_t __virt_to_phys'에 접근한다.
+	 */
 	bcc	1b
 	bx	lr
 #else
@@ -678,9 +763,13 @@ ARM_BE8(rev16	ip, ip)
 	moveq	r0, #0x00004000	@ set bit 22, mov to mvn instruction
 #else
 	moveq	r0, #0x400000	@ set bit 22, mov to mvn instruction
+	/*@Iamroot
+	 * Raspberry pi2가 LITTLE ENDIAN이기 때문에 #else 루틴으로 빠짐
+	 * cmn연산결과 Z플래그 set되기 때문에 moveq 명령어는 실행함 
+	 */
 #endif
 	b	2f
-1:	ldr	ip, [r7, r3]
+1:	ldr	ip, [r7, r3] @Iamroot ip => pv_table_begin의 VIRT_ADDRESS + delta offset(다음주에 계속)
 #ifdef CONFIG_CPU_ENDIAN_BE8
 	@ in BE8, we load data in BE, but instructions still in LE
 	bic	ip, ip, #0xff000000
@@ -696,9 +785,16 @@ ARM_BE8(rev16	ip, ip)
 	orreq	ip, ip, r0	@ mask in offset bits 7-0
 #endif
 	str	ip, [r7, r3]
+	/*@Iamroot
+	 * r4 = PV_TABLE_BEGIN
+	 * r5 = PV_TABLE_END
+	 */
 2:	cmp	r4, r5
 	ldrcc	r7, [r4], #4	@ use branch for delay slot
 	bcc	1b
+	/*@Iamroot
+	 * PV_TABLE_BEGIN부터 주소값을 읽어서 r7에 넣고 r4에 4를 더함
+	 */
 	ret	lr
 #endif
 ENDPROC(__fixup_a_pv_table)

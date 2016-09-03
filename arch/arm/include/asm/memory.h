@@ -194,7 +194,11 @@ extern const void *__pv_table_begin, *__pv_table_end;
 	"	.popsection\n"				\
 	: "=r" (to)					\
 	: "r" (from), "I" (type))
-
+	/*@Iamroot
+	 *  Google Docs 'arm inline assembly' 참고(1.3.3.)
+	 * Inline 함수를 사용하는 이유는 Overhead를 줄이기 위해서다.
+	 * PHYS_ADDRESS <-> VIRT_ADDRESS 전환하는 과정이 계속 반복되면 Overhead가 상당히 많이 소요된다.
+	 */
 #define __pv_stub_mov_hi(t)				\
 	__asm__ volatile("@ __pv_stub_mov\n"		\
 	"1:	mov	%R0, %1\n"			\
@@ -214,13 +218,17 @@ extern const void *__pv_table_begin, *__pv_table_end;
 	: "+r" (y)					\
 	: "r" (x), "I" (__PV_BITS_31_24)		\
 	: "cc")
-
+/*@Iamroot
+ XIP를 안쓰더리도 빠르게 부팅되게끔 하기 위해서 아래  인라인 함수를 만들었다.
+ 이 때 런타임 시점에 VIRT <-> PHYS 전환을 보다 더 빠르게 하기 위해 인라인 함수를 사용한다.
+ */
 static inline phys_addr_t __virt_to_phys(unsigned long x)
 {
 	phys_addr_t t;
 
 	if (sizeof(phys_addr_t) == 4) {
 		__pv_stub(x, t, "add", __PV_BITS_31_24);
+		/*x + __PV_BITS_31_24 = t*/
 	} else {
 		__pv_stub_mov_hi(t);
 		__pv_add_carry_stub(x, t);

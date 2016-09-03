@@ -131,6 +131,10 @@ unsigned long __stack_chk_guard;
 
 void __stack_chk_guard_setup(void)
 {
+	/*
+	 * stack overflow 공격을 막기 위해 stack_canary 개념을 이용한다.
+	 * 참고] google.docs 0806/ 메모리 보호기법 
+	 */
 	__stack_chk_guard = 0x000a0dff;
 }
 
@@ -142,6 +146,9 @@ void __stack_chk_fail(void)
 extern int do_decompress(u8 *input, int len, u8 *output, void (*error)(char *x));
 
 
+/* @Iamroot
+ *
+ */
 void
 decompress_kernel(unsigned long output_start, unsigned long free_mem_ptr_p,
 		unsigned long free_mem_ptr_end_p,

@@ -572,11 +572,8 @@ dtb_check_done:
 		add	sp, sp, r6
 #endif
 
-		bl	cache_clean_flush
+		bl	cache_clean_flush	
 
-		/* iamroot
-		 * 복사된 코드의 restart 실행
-		 */
 		badr	r0, restart
 		add	r0, r0, r6
 		mov	pc, r0
@@ -595,14 +592,11 @@ wont_overwrite:
  *   r12 = GOT end
  *   sp  = stack pointer
  */
- 		/* iamroot 
-		 * 
-		 */
+		/*GOT(Global Offset Table): 20160730. google.docs 참고 */
 		orrs	r1, r0, r5  
 		beq	not_relocated
-
-		add	r11, r11, r0
-		add	r12, r12, r0
+		add	r11, r11, r0 /*@Iamroot r11 = GOT start + delta*/
+		add	r12, r12, r0 /*@Iamroot r12 = GOT end + delta*/
 
 #ifndef CONFIG_ZBOOT_ROM
 		/*
@@ -618,18 +612,20 @@ wont_overwrite:
 		 * Bump bss entries to _edata + dtb size
 		 */
 1:		ldr	r1, [r11, #0]		@ relocate entries in the GOT
-		add	r1, r1, r0		@ This fixes up C references
+		add	r1, r1, r0		@ This fixes up C references /*@Iamroot : 역시 r0(delta)값을 더해줘야한다.*/
 		cmp	r1, r2			@ if entry >= bss_start &&
-		cmphs	r3, r1			@       bss_end > entry
-		addhi	r1, r1, r5		@    entry += dtb size
+		cmphs	r3, r1			@       bss_end > entry		/*@Iamroot : bss영역이라면*/
+		addhi	r1, r1, r5		@    entry += dtb size		/*@Iamroot : r3 > r1이면 entry += dtb size*/
+						/*@ GOT 에 있는 변수들을 delta만큼 더해주는데 bss 영역 안에 있는
+						 * 초기화 되지 않은 변수라면 delta, dtb size 둘을 더해준다.
+						 */
 		str	r1, [r11], #4		@ next entry
 		cmp	r11, r12
 		blo	1b
 
 		/* bump our bss pointers too */
-		add	r2, r2, r5
-		add	r3, r3, r5
-
+		add	r2, r2, r5		/*@ Iamroot  r2, r3에 dtb size 값만큼 append*/
+		add	r3, r3, r5		/* dtb 뒤에 bss가 와야하므로 */
 #else
 
 		/*
@@ -645,11 +641,11 @@ wont_overwrite:
 		blo	1b
 #endif
 
-not_relocated:	mov	r0, #0
+not_relocated:	mov	r0, #0                  @ Iamroot: 이 코드가 있어야 초기화 되지 않은 global var가 0으로 잡힌다. 
 1:		str	r0, [r2], #4		@ clear bss
 		str	r0, [r2], #4
 		str	r0, [r2], #4
-		str	r0, [r2], #4
+		str	r0, [r2], #4		@ ??? : 왜 str 을 4번씩이나 하는지. 16byte alignment??
 		cmp	r2, r3
 		blo	1b
 
@@ -669,13 +665,26 @@ not_relocated:	mov	r0, #0
  *   r7  = architecture ID
  *   r8  = atags pointer
  */
+		/*
+		 * @Iamroot
+		 * r0 <= kernel 시작 주소(decompressed kernl)
+		 * r1 <= stack pointer 
+		 * stack pointer에 64kb만큼 더한 값을 r2에 더한다. (Heap 영역)
+		 */
 		mov	r0, r4
 		mov	r1, sp			@ malloc space above stack
 		add	r2, sp, #0x10000	@ 64k max
-		mov	r3, r7
+		mov	r3, r7			/* architecture ID*/
+		/*
+		 * @Iamroot
+		 * 이 레지스터들(r0-r3)은 decompress_kernel함수(c function)의 parameters로 사용된다.
+		 * r0는 ARM calling convention에 의해 C함수에서 return 값으로 사용된다.
+		 * lr은 return pointer(복귀 주소) 
+		 */
 		bl	decompress_kernel
-		bl	cache_clean_flush
-		bl	cache_off
+		bl	cache_clean_flush	/*@Iamroot: 압축 풀기 위해서 cache_on했던 것을 이제 끄기 전에 clean_flush*/
+		bl	cache_off		/*@Iamroot: decompressed Kernel 소스의 처음 진입조건이 mmu off and cache off*/
+		
 		mov	r1, r7			@ restore architecture number
 		mov	r2, r8			@ restore atags pointer
 
@@ -697,7 +706,7 @@ not_relocated:	mov	r0, #0
 		.align	2
 .L__hyp_reentry_vectors_offset:	.long	__hyp_reentry_vectors - .
 #else
-		b	__enter_kernel
+		b	__enter_kerneD Tree Toggling
 #endif
 
 		.align	2
@@ -1146,7 +1155,10 @@ __common_mmu_cache_on:
  *  r12 = corrupted
  */
 
-call_cache_fn:	adr	r12, proc_types
+		call_cache_fn:	adr	r12, proc_types		/* @Iamroot : architecture에 맞는 processor type주소를
+						 * 가져온다.
+						 */
+
 #ifdef CONFIG_CPU_CP15
         /* @iamroot CP15 : 시스템 컨트롤을 목적을 가진 코프로세서
          *  Main ID 레지스터를 읽어와서 r9 레지스터에 복사
@@ -1322,8 +1334,8 @@ proc_types:
 		W(b)	__armv4_mmu_cache_off
 		W(b)	__armv6_mmu_cache_flush
 
-		.word	0x000f0000		@ new CPU Id
-		.word	0x000f0000
+		.word	0x000f0000		@ new CPU Id /* ARMv7의 경우 따로 정의 되어 있지 않다.*/
+		.word	0x000f0000		/* masking value*/
         /** @iamroot 
          * armv7이라고 가정
          **/
@@ -1422,6 +1434,11 @@ __armv7_mmu_cache_off:
  *  r4, r6, r7, r8
  */
 		.align	5
+	
+	/*
+	 *  @ Iamroot:
+	 *  
+	 */
 cache_clean_flush:
 		mov	r3, #16
 		b	call_cache_fn
@@ -1464,58 +1481,127 @@ __armv6_mmu_cache_flush:
 		mov	pc, lr
 
 __armv7_mmu_cache_flush:
-		tst	r4, #1
-		bne	iflush
+		tst	r4, #1			/*@Iamroot  decompressed Kernel주소와 1을 비교한다
+						 * 1이 setting되어 있으면 mmu가 켜져 있지 않은 상태
+						 * tst는 and연산 비교.
+						 */
+		bne	iflush			/*@Iamroot mmu가 꺼져 있을 경우 분기 
+						 * data cache를 굳이 flush할 필요가 없으므로 바로 iflush로 분기
+						 */
 		mrc	p15, 0, r10, c0, c1, 5	@ read ID_MMFR1
+						/*@Iamroot   r10에 id_mmfr1 레지스터 read함*/
 		tst	r10, #0xf << 16		@ hierarchical cache (ARMv7)
+						/*@Iamroot   L1 Harvard cache & 0b1111 연산*/
 		mov	r10, #0
-		beq	hierarchical
+		beq	hierarchical		/*@Iamroot   Havard cache가0000이면 hierarchical로 분기
+						 * ARMv7은 무조건 hierarchical이어야 하는데,
+						 * 이 분기 비교와 아래 2줄은 굳이 필요한 코드가 아니다. 
+						 */
 		mcr	p15, 0, r10, c7, c14, 0	@ clean+invalidate D
 		b	iflush
 hierarchical:
+		/*@Iamroot
+		mcr	p15, 0, r10, c7, c10, 5	@ DMB : DMB 호출전, 호출 후 경계를 만든다고 생각하면 편하다.
+		stmfd	sp!, {r0-r7, r9-r11}	@ stmdb와 같은 연산. but 저장하는방향, stack ptr가 바뀌는 타이밍이 다르다.
+								쌓는 주소가 굳이 sp가 아니어도 상관없다. 
+						@ arm의 calling convention:
+						  arm에서는 function call시 r0~r3까지는 오염될수 있다. 그러나 r4~ 나머지는
+						  context switch 하면서 데이터가 손실되면 안됨. 그래서 sp에
+						  back up하고 난 후에 function call 한다. function call 이후 context switching
+						  하고 난 후 미리back up 한 데이터를 이용해 context를 복구 시킬 수 있다.
+		mrc	p15, 1, r0, c0, c0, 1	@ clidr: Cache Level ID Register
+		ands	r3, r0, #0x7000000	@ loc : level of coherency,
+						  loc가 n 이면 n 이후의 모든 cache level은 clean할 필요가 없다.
+						  loc == 1이다. L2이상 부터는 coherency(동일함)을 보장함. 
+						                but L1까지는 clean을 해줘야만한다.
+						  s 접미어 : tst처럼 상태플래그 반영
+		mov	r3, r3, lsr #23		@ ???: 24bit rshift가 아니라23bit rshift, 1bit를 덜 당기는 이유???
+						  r3 = (loc *2)값 들어가게됨
+		beq	finished		@ loc가 0이면 0이후의 모든 cache level clean필요 없음.
+						@ cache lev 1부터 모든 core가 동일하다. 즉 바로 finished로 간다. 
+		mov	r10, #0			@ cache level 0부터 clean하기 위해서
+		*/
 		mcr	p15, 0, r10, c7, c10, 5	@ DMB
 		stmfd	sp!, {r0-r7, r9-r11}
 		mrc	p15, 1, r0, c0, c0, 1	@ read clidr
-		ands	r3, r0, #0x7000000	@ extract loc from clidr
+		ands	r3, r0, #0x7000000	@ extract loc from clidr 
 		mov	r3, r3, lsr #23		@ left align loc bit field
 		beq	finished		@ if loc is 0, then no need to clean
 		mov	r10, #0			@ start clean at cache level 0
+		
+		/*@Iamroot
+		 * 여기 cache 설정하는 방식이 set-way 방식 : set associative cache?
+		 * n-way set way. 20160730 google.docs 참고. n개의 way를 동시에 tag비트만 보고 찾는다.
+		 * direct mapping 방식에 비해 빠르지만, cache설계에서 복잡하다.
+		 *
+		 *r10 is now 0
+		 */
+/*@Iamroot:
+  loop1: cache level*/
 loop1:
-		add	r2, r10, r10, lsr #1	@ work out 3x current cache level
-		mov	r1, r0, lsr r2		@ extract cache type bits from clidr
+		add	r2, r10, r10, lsr #1	@ work out 3x current cache level 
+		mov	r1, r0, lsr r2		@ extract cache type bits from clidr 
 		and	r1, r1, #7		@ mask of the bits for current cache only
+						/*@Iamroot: cache type을 반복해서 순서대로 추출한다. */
 		cmp	r1, #2			@ see what cache we have at this level
-		blt	skip			@ skip if no cache, or just i-cache
+						/*Iamroot: cache type이 0x010 미만일 때는 flush하지 않고 skip한다. */
+		blt	skip			@ skip if no cache, or just i-cache /*data cache가 없으므로*/
+
 		mcr	p15, 2, r10, c0, c0, 0	@ select current cache level in cssr
+						/*@Iamroot
+						 * csselr: Cache Size Selection Register
+						 * 다른 coprocessor에서 cache size등의 정보를 읽어와야 하는데
+						 * 어느 cache레벨에서 읽어올지 알아야한다. 
+						 * 
+						 */
 		mcr	p15, 0, r10, c7, c5, 4	@ isb to sych the new cssr&csidr
 		mrc	p15, 1, r1, c0, c0, 0	@ read the new csidr
 		and	r2, r1, #7		@ extract the length of the cache lines
+						/* @Iamroot:
+						 * r2에다가 cache line의 LineSize를 읽어온다. 
+						 * lg(Number of words in cache line) -2
+						 * e.g., word가 4개라면 0
+						 */
 		add	r2, r2, #4		@ add 4 (line length offset)
-		ldr	r4, =0x3ff
+		ldr	r4, =0x3ff		
 		ands	r4, r4, r1, lsr #3	@ find maximum number on the way size
+						/*@Iamroot: 이제 r4에는 ccsidr의 associativity부분이 딱 들어감*/
 		clz	r5, r4			@ find bit position of way size increment
+						/* clz : msb에서부터 bit가 첫번째 1이 나올 때까지 0이 나오는 개수 계산 */
 		ldr	r7, =0x7fff
 		ands	r7, r7, r1, lsr #13	@ extract max number of the index size
+						/*@Iamroot: r7에는ccsidr의 NumSets부분 읽어옴*/
+/*@iamroot
+  loop2: set (=index)*/
 loop2:
 		mov	r9, r4			@ create working copy of max way size
+
+/*@iamroot
+  loop3: way */
 loop3:
  ARM(		orr	r11, r10, r9, lsl r5	) @ factor way and cache number into r11
+						/*@Iamroot: r11 = (r9:max way size) orr (r10:cach Level)*/
  ARM(		orr	r11, r11, r7, lsl r2	) @ factor index number into r11
- THUMB(		lsl	r6, r9, r5		)
+						/*@Iamroot: r11 = (r11) orr (r7:NumSets) << (r2:LineSize+4) */
+ THUMB(		lsl	r6, r9, r5		) /*@Iamroot: r6 = (r9:way size) << (r5:bit position)*/
  THUMB(		orr	r11, r10, r6		) @ factor way and cache number into r11
- THUMB(		lsl	r6, r7, r2		)
+						  /*@Iamroot: r11 = (r10 orr r6) */
+ THUMB(		lsl	r6, r7, r2		) /*@Iamroot: r6 = (r7:NumSets) << (r2:LineSize+4)*/
  THUMB(		orr	r11, r11, r6		) @ factor index number into r11
 		mcr	p15, 0, r11, c7, c14, 2	@ clean & invalidate by set/way
+						/*@Iamroot: DCCISW */
 		subs	r9, r9, #1		@ decrement the way
-		bge	loop3
+		bge	loop3			/* ge : greater than or equal. >=*/
 		subs	r7, r7, #1		@ decrement the index
 		bge	loop2
+
 skip:
 		add	r10, r10, #2		@ increment cache number
+						/*Iamroot: r10에 2씩 증가시키는 이유는 level을 올리기 위해서 */
 		cmp	r3, r10
 		bgt	loop1
 finished:
-		ldmfd	sp!, {r0-r7, r9-r11}
+		ldmfd	sp!, {r0-r7, r9-r11}	/*@Iamroot: sp에 쌓아뒀던 r0-r7, r9-r11으로 pop한다*/
 		mov	r10, #0			@ swith back to cache level 0
 		mcr	p15, 2, r10, c0, c0, 0	@ select current cache level in cssr
 iflush:
@@ -1670,7 +1756,7 @@ __hyp_reentry_vectors:
 
 __enter_kernel:
 		mov	r0, #0			@ must be 0
- ARM(		mov	pc, r4		)	@ call kernel
+ ARM(		mov	pc, r4		)	@ call kernel /*decompressed kernel의 시작점으로 가기 위해*/
  M_CLASS(	add	r4, r4, #1	)	@ enter in Thumb mode for M class
  THUMB(		bx	r4		)	@ entry point is always ARM for A/R classes
 

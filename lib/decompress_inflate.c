@@ -40,6 +40,13 @@ STATIC int INIT __gunzip(unsigned char *buf, long len,
 		       unsigned char *out_buf, long out_len,
 		       long *pos,
 		       void(*error)(char *x)) {
+	/*
+	 * u8: 뒤에 나오는 숫자는 bit단위. 즉 unsigned 8bit == char(1Byte)
+	 * 또다른 표기법 uint64_t.... 
+	 * arch마다 자료형의 크기가 조금씩 다르다. 그래서
+	 * u8, u16 과 같은 표기를 쓰면 명확하게 size를 알수있다.
+	 * instruction은 WORD size에 따라간다.
+	 */
 	u8 *zbuf;
 	struct z_stream_s *strm;
 	int rc;

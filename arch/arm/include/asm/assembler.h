@@ -250,6 +250,11 @@ Little endian 을 default로 사용
 	.long	9999b,9001f;			\
 	.popsection
 
+/* @Iamroot
+ * ALT_UP, ALT_SMP 매크로는 실제로 실행하는 platform이 SMP이건, UP이건 간에
+ * runtime 때 적절한 instruction들을 고르기 위해 사용된다.
+ * https://goo.gl/wPrK3G ALT_SMP / ALT_UP 참고
+ */
 #ifdef CONFIG_SMP
 #define ALT_SMP(instr...)					\
 9998:	instr
@@ -259,16 +264,18 @@ Little endian 을 default로 사용
  * ALT_SMP( W(instr) ... )
  */
 #define ALT_UP(instr...)					\
-	.pushsection ".alt.smp.init", "a"			;\
-	.long	9998b						;\
-9997:	instr							;\
-	.if . - 9997b == 2					;\
+	.pushsection ".alt.smp.init", "a"			;\ 
+	.long	9998b						;\ /* .alt.smp.init 섹션에 
+								    *  9998b label의 .long만큼 삽입->즉 'SMP instr의 주소'삽입 */
+9997:	instr							;\ /* SMP instr주소 바로 다음에, ALT_UP()의 인자로 준 UP용 instr */
+	.if . - 9997b == 2					;\ /* 4byte alignment 맞추기 위함*/
 		nop						;\
 	.endif							;\
 	.if . - 9997b != 4					;\
 		.error "ALT_UP() content must assemble to exactly 4 bytes";\
 	.endif							;\
 	.popsection
+	/* 결론적으로, ALT_UP() 매크로는 9998 label 자리에 UP instr을 실행시키도록 한다.*/
 #define ALT_UP_B(label)					\
 	.equ	up_b_offset, label - 9998b			;\
 	.pushsection ".alt.smp.init", "a"			;\
@@ -276,9 +283,11 @@ Little endian 을 default로 사용
 	W(b)	. + up_b_offset					;\
 	.popsection
 #else
-#define ALT_SMP(instr...)
-#define ALT_UP(instr...) instr
+/* CONFIG_SMP 설정 안했다면(즉, UP용으로 빌드되었다면)*/
+#define ALT_SMP(instr...)	/* do nothing */
+#define ALT_UP(instr...) instr  /* UP instruction만 수행*/
 #define ALT_UP_B(label) b label
+
 #endif
 
 /*
@@ -513,8 +522,15 @@ THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 #if __LINUX_ARM_ARCH__ < 6
 	mov\c	pc, \reg
 #else
-	.ifeqs	"\reg", "lr"
-	bx\c	\reg
+	.ifeqs	"\reg", "lr"	/* eqs: "\reg"의 str값이 "lr"이 맞느냐*/
+	bx\c	\reg		/* b'x': x? ARM코드->THUMB코드 변환가능
+				 * 그 역도 가능, ARM코드면 jmp뛰는 주소가
+				 * 0으로 끝나고 Thumb코드는 1로 끝난다.
+				 * 그냥 b를 해버리면
+				 * thumb코드와 arm코드 decoding룰이 다르니까
+				 * instruction이 에러가난다.
+				 * x는 eXchange를 의미한다.
+				 */
 	.else
 	mov\c	pc, \reg
 	.endif

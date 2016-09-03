@@ -51,7 +51,7 @@ __vet_atags:
 	ldr	r5, [r2, #0]
 #ifdef CONFIG_OF_FLATTREE
 	ldr	r6, =OF_DT_MAGIC		@ is it a DTB?
-	cmp	r5, r6
+	cmp	r5, r6  /* r5 == 진짜로 써진 magic no, r6 == 정의한 magic no*/
 	beq	2f
 #endif
 	cmp	r5, #ATAG_CORE_SIZE		@ is first tag ATAG_CORE?
@@ -64,7 +64,8 @@ __vet_atags:
 
 2:	ret	lr				@ atag/dtb pointer is ok
 
-1:	mov	r2, #0
+1:	mov	r2, #0				/*DTB도 없고 ATAG도 없으면
+						 * 0을 return */
 	ret	lr
 ENDPROC(__vet_atags)
 
@@ -151,17 +152,28 @@ ENDPROC(lookup_processor_type)
  */
 __lookup_processor_type:
 	adr	r3, __lookup_processor_type_data
-	ldmia	r3, {r4 - r6}
+	ldmia	r3, {r4 - r6}			/*@Iamroot
+						 * r4 = .
+						 * r5 = __proc_info_begin
+						 * r6 = __proc_info_end
+						 */
 	sub	r3, r3, r4			@ get offset between virt&phys
 	add	r5, r5, r3			@ convert virt addresses to
 	add	r6, r6, r3			@ physical address space
-1:	ldmia	r5, {r3, r4}			@ value, mask
+	/*@Iamroot
+	 * 이제 r5, r6은 각각 __proc_info_begin과 __proc_info_end의 Physical Address를
+	 * 가지고 있다.
+	 */
+1:	ldmia	r5, {r3, r4}			@ value, mask 
+						/* proc_info 구조체로부터
+						 * cpu value, cpu mask를 r3, r4로 읽어온다.
+						 */
 	and	r4, r4, r9			@ mask wanted bits
-	teq	r3, r4
-	beq	2f
-	add	r5, r5, #PROC_INFO_SZ		@ sizeof(proc_info_list)
-	cmp	r5, r6
-	blo	1b
+	teq	r3, r4				/* value와 mask 비교*/
+	beq	2f				/* cpu를 판별하여 일치하면 2f로 분기*/
+	add	r5, r5, #PROC_INFO_SZ		@ sizeof(proc_info_list) /* r5에 proc_info_list 구조체 크기만큼 더함*/
+	cmp	r5, r6				/* r5(proc_info_begin + PROC_INFO_SZ)와 r6(proc_info_end)를 비교 */
+	blo	1b				/* r5가 작으면 1b로 돌아가 루프를 돈다(새로 proc_info값을 구함) */
 	mov	r5, #0				@ unknown processor
 2:	ret	lr
 ENDPROC(__lookup_processor_type)
@@ -209,10 +221,18 @@ __error:
 /*
  * Turn the screen red on a error - RiscPC only.
  */
-	mov	r0, #0x02000000
+	mov	r0, #0x02000000		/* <08.20 google.docs - arm_immediate>참고
+					 * 0x02000000 에서 맨앞 8비트 02는
+					 * Operand2에서immediate value로 취급(MAX: 8bit)
+					 * 아래의 r3을  mov r3, #0x11111111로 하면 에러가 난다.
+
+					 * 0x02000000은Acorn RiscPC architectures에서 사용하는
+					 * Video ram의 시작주소 
+					 */
 	mov	r3, #0x11
-	orr	r3, r3, r3, lsl #8
-	orr	r3, r3, r3, lsl #16
+	orr	r3, r3, r3, lsl #8	/* r3 == 0x00001111 */
+	orr	r3, r3, r3, lsl #16	/* r3 == 0x11111111 */
+
 	str	r3, [r0], #4
 	str	r3, [r0], #4
 	str	r3, [r0], #4
