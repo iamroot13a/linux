@@ -669,6 +669,8 @@ __fixup_pv_table:
 	 * pv_table은 physical_memory주소에서  virtual_memory주소로 변환하거나
 	 * virtual_memory주소에서 physical_memory주소로 변환시 참조하는 테이블이다.
 	 * 테이블 안에는 pv_stub instruction의 memory주소가 들어있다.
+	 * fixup_pv_table은 delta offset, page frame number, page start/end address 값을 구하는 역할을 수행한다.
+	 * fixup_a_pv_table은 pv_table의 __PV_BITS_31_24(memory.h)를 계산된 delta offset 주소로 변경하는 역할을 수행한다.
 	 */
 	adr	r0, 1f
 	ldmia	r0, {r3-r7}
@@ -751,6 +753,9 @@ ARM_BE8(rev16	ip, ip)
 	strh	ip, [r7]
 2:	cmp	r4, r5
 	ldrcc	r7, [r4], #4	@ use branch for delay slot
+	/*@Iamroot
+	 이쪽에서부터 런타임이 시작될 때 /arch/arm/include/asm/memory.h에 있는 'static inline phys_addr_t __virt_to_phys'에 접근한다.
+	 */
 	bcc	1b
 	bx	lr
 #else
