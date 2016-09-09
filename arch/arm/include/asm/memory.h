@@ -232,6 +232,9 @@ static inline phys_addr_t __virt_to_phys(unsigned long x)
 	} else {
 		__pv_stub_mov_hi(t);
 		__pv_add_carry_stub(x, t);
+        /*** @Iamroot: 2016/09/03
+        * LPAE 를 사용할때 들어가는 분기 
+        @Iamroot 2016/09/03***/
 	}
 	return t;
 }

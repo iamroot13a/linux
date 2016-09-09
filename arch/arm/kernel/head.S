@@ -55,6 +55,12 @@
 	add	\rd, \phys, #TEXT_OFFSET
 	sub	\rd, \rd, #PG_DIR_SIZE
 	.endm
+        /*** @Iamroot: 2016/09/03
+        *TEXT_OFFSET : 0x8000 -> 커널 영역의 시작 주소
+        *PG_DIR_SIZE : PTE의 크기 
+        *phys + TEXT_OFFSET -> PTE 끝 물리 주소
+        *PTE의 끝주소에서 PTE의 크기를 빼면 PTE의 물리 시작주소를 구할수 있음 
+        @Iamroot 2016/09/03***/
 
 /*
  * Kernel startup entry point.
@@ -220,19 +226,35 @@ ENDPROC(stext)
  */
 __create_page_tables:
 	pgtbl	r4, r8				@ page table address
-
+        /*** @Iamroot: 2016/09/03
+        * pgtbl -> macro
+        * r8 : phys_offset , 
+        * r4 : physical 페이지 테이블 주소 
+        @Iamroot 2016/09/03***/
 	/*
 	 * Clear the swapper page table
 	 */
 	mov	r0, r4
 	mov	r3, #0
 	add	r6, r0, #PG_DIR_SIZE
+        /*** @Iamroot: 2016/09/03
+        * r0 에 PTE의 시작주소를 넣음 
+        * r3 를 0으로 초기화
+        * r6 에는 (PTE의 시작 주소 + PTE의 사이즈 = )PTE의 끝 주소 를 집어넣음 
+        @Iamroot 2016/09/03***/
 1:	str	r3, [r0], #4
 	str	r3, [r0], #4
 	str	r3, [r0], #4
 	str	r3, [r0], #4
 	teq	r0, r6
 	bne	1b
+        /*** @Iamroot: 2016/09/03
+        * PTE를 0으로 초기화 시키는 작업 
+        * PTE의 시작 주소 부터 4씩 증가 시키면서 0을 넣는 작업을 4회 한후 
+        * r0 와 r6를 비교하여 마지막 주소에 갔을때 루프를 정지한다 .
+        * 굳이 4회를 반복하는 이유
+        * 가설 1 : 16바이트(4회)와 16k를 매치 시키기 위해 
+        @Iamroot 2016/09/03***/
 
 #ifdef CONFIG_ARM_LPAE
 	/*
@@ -263,6 +285,15 @@ __create_page_tables:
 #endif
 
 	ldr	r7, [r10, #PROCINFO_MM_MMUFLAGS] @ mm_mmuflags
+        /*** @Iamroot: 2016/09/03
+        * r10 : proc info list의 주소 
+        * #PROCINFO_MM_MMUFLAGS  
+        * DEFINE(PROCINFO_MM_MMUFLAGS,    offsetof(struct proc_info_list, __cpu_mm_mmu_flags))
+        * proc_info_list의 __cpu_mm_mmu_flags의 offset을 PROCINFO_MM_MMUFLAGS에 정의 한다
+        * offsetof ->  project/linux/include/linux/kbuild.h
+        * 참고 : ALT_UP(.long    PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+                    PMD_SECT_AF | PMD_FLAGS_UP | \mm_mmuflags)
+        @Iamroot 2016/09/03***/
 
 	/*
 	 * Create identity mapping to cater for __enable_mmu.
@@ -270,22 +301,57 @@ __create_page_tables:
 	 */
 	adr	r0, __turn_mmu_on_loc
 	ldmia	r0, {r3, r5, r6}
+        /*** @Iamroot: 2016/09/03
+        * turn_mmu_on_loc의 주소를 r0에 넣고 
+        * r0 : __turn_mmu_on_loc 's phy address
+        * r3 : .
+        * r5 : __turn_mmu_on
+        * r6 : __turn_mmu_on_end
+        @Iamroot 2016/09/03***/
 	sub	r0, r0, r3			@ virt->phys offset
 	add	r5, r5, r0			@ phys __turn_mmu_on
 	add	r6, r6, r0			@ phys __turn_mmu_on_end
-	mov	r5, r5, lsr #SECTION_SHIFT
-	mov	r6, r6, lsr #SECTION_SHIFT
+	mov	r5, r5, lsr #SECTION_SHIFT      @ arch/arm/include/asm/pgtable-2level.h
+	mov	r6, r6, lsr #SECTION_SHIFT      @ SECTION_SHIFT : 20 
+        /*** @Iamroot: 2016/09/03
+        * 물리주소 에서 가상주소를 빼 offset을 구하여 r0에 넣는다 
+        * offset과 __turn_mmu_on의 가상주소를 더하여 _turn_mmu_on 의 물리주소를 r5에 저장
+        * offset과 __turn_mmu_on_end의 가상주소를 더하여 _turn_mmu_on_end 의 물리주소를 r5에 저장
+        * LPAE를 사용할경우 SECTION_SHIFT는 pgtable-3level.h를 참조 
+        * section base addeess 가 31 ~ 20 까지의 비트이므로 그 외 필요 없는 비트들을 전부 
+        * 날려버리기 위해 SECTION_SHIFT 만큼 SHIFT 한다 
+        @Iamroot 2016/09/03***/
 
 1:	orr	r3, r7, r5, lsl #SECTION_SHIFT	@ flags + kernel base
+        /*** @Iamroot: 2016/09/03
+        * SECTION_SHIFT만큼 다시 r5를 조정하여 
+        * 19~0 까지의 하위비트를 전부 0으로 채우고 r7와 or연산하여 r3에 넣는다
+        * r7 : mm_mmuflags
+        @Iamroot 2016/09/03***/
 	str	r3, [r4, r5, lsl #PMD_ORDER]	@ identity mapping
 	cmp	r5, r6
 	addlo	r5, r5, #1			@ next section
 	blo	1b
+        /*** @Iamroot: 2016/09/03
+        * #PMD_ORDER : 2 
+        * r4 : PTE의 시작 주소 
+        * r4와 r5를 2번 shift한 값과 더하여 r3에 저장 한다 
+        * r5에 1바이트씩 더하여 2씩 shift하면 4씩 증가하는 결과가 된다 
+        * turn_mmu_on 과 turn_mmu_on_end 사이의 한 섹션에 대하여 맵핑  
+        * __turn_mmu_on 의 의미를 알 필요가 있음 ????????  
+        @Iamroot 2016/09/03***/
 
 	/*
 	 * Map our RAM from the start to the end of the kernel .bss section.
 	 */
-	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER)
+	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER) 
+        /*** @Iamroot: 2016/09/03
+        * page_offset(0x80000000) >> 18 = 0x2000
+        * r4 : PTE의 시작 주소 
+        * PMD : page middle directory
+        * PGD : page global directory
+        * PTE : page table entry
+        @Iamroot 2016/09/03***/
 	ldr	r6, =(_end - 1)
 	orr	r3, r8, r7
 	add	r6, r4, r6, lsr #(SECTION_SHIFT - PMD_ORDER)
@@ -293,6 +359,12 @@ __create_page_tables:
 	add	r3, r3, #1 << SECTION_SHIFT
 	cmp	r0, r6
 	bls	1b
+/*** @Iamroot: 2016/09/03
+        r6 : vmlinux 
+        r7 : phy offset 
+        r8 : 0x80000000
+        다음주에 계속.........
+@Iamroot 2016/09/03***/
 
 #ifdef CONFIG_XIP_KERNEL
 	/*
@@ -769,7 +841,10 @@ ARM_BE8(rev16	ip, ip)
 	 */
 #endif
 	b	2f
-1:	ldr	ip, [r7, r3] @Iamroot ip => pv_table_begin의 VIRT_ADDRESS + delta offset(다음주에 계속)
+1:	ldr	ip, [r7, r3] @Iamroot ip => pv_table_begin의 VIRT_ADDRESS + delta offset
+        /*** @Iamroot: 2016/09/03
+        * r7(pv_table_begin 의 가상주소)에  delta-offset을 더해 pv_table에 저장되어 있는 instruction을 불러옴 
+        @Iamroot 2016/09/03***/
 #ifdef CONFIG_CPU_ENDIAN_BE8
 	@ in BE8, we load data in BE, but instructions still in LE
 	bic	ip, ip, #0xff000000
@@ -780,9 +855,23 @@ ARM_BE8(rev16	ip, ip)
 #else
 	bic	ip, ip, #0x000000ff
 	tst	ip, #0xf00	@ check the rotation field
+        /*** @Iamroot: 2016/09/03
+        * 현재 ip는 pv_table에서 가져온 instruction
+        * 하위 8비트(immediate 값) 클리어 
+        * rotation field(9 ~ 12비트)에 있는 값과 0xf00을 비교 manual p.200
+        * 0x'f'00 -> 1111 과 ip의 9~12비트를 and 연산하여 결과가 0000 일 경우 eq, 아닐경우 ne 실행
+        @Iamroot 2016/09/03***/
 	orrne	ip, ip, r6	@ mask in offset bits 31-24
 	biceq	ip, ip, #0x400000	@ clear bit 22
 	orreq	ip, ip, r0	@ mask in offset bits 7-0
+        /*** @Iamroot: 2016/09/03
+        * r6 : pv_offset의 row 비트
+        * 하위 8비트를 pv_offset(r6)과 orr연산
+        * -> immediate의 값을 변경
+        * eq 명령어들(biceq, orreq)은 64비트 일경우
+        * 64비트일경우 rotation field가 0000
+        * 32비트일경우 rotation field를 반드시 써야 하기 때문에 
+        @Iamroot 2016/09/03***/
 #endif
 	str	ip, [r7, r3]
 	/*@Iamroot
