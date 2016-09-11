@@ -31,21 +31,41 @@
  * to be called for both secondary cores startup and primary core resume
  * procedures.
  */
-ENTRY(v7_invalidate_l1)
+ENTRY(v7_invalidate_l1) @Iamroot 2016/09/10 invalidate 용어는 Google Docs 참고
        mov     r0, #0
        mcr     p15, 2, r0, c0, c0, 0
        mrc     p15, 1, r0, c0, c0, 0
+	   /*@Iamroot 2016/09/10
+		* r0 = 0
+		* Cache Size Selection Register에 0을 쓴다 : Data or unified cache
+		* r0에 Cache Size ID Registers를 읽어온다.
+		*/
 
        movw    r1, #0x7fff
        and     r2, r1, r0, lsr #13
+	   /*@Iamroot 2016/09/10
+		* movw : 2바이트(word) 단위로 mov한다.
+		* word 단위를 넘어선 숫자를 읽어들이시 0으로 받아들인다.
+		* r0에 Numset 이하 [12:0]비트를 없앤 후 0x7ffff와 and연산을 수행한다.
+		* 수행한 값을 r2에 넣는다.
+		*/
 
        movw    r1, #0x3ff
 
        and     r3, r1, r0, lsr #3      @ NumWays - 1
        add     r2, r2, #1              @ NumSets
-
+   		/*@Iamroot 2016/09/10
+		 * r0에 LineSize 이하 [2:0]비트를 없앤 후 0x3ff와 and연산을 수행한다.
+		 * 수행한 값을 r3에 넣는다.
+		 * r2 = r2 + 0x0001
+		 */
        and     r0, r0, #0x7
        add     r0, r0, #4      @ SetShift
+		/*@Iamroot 2016/09/10
+		 * r0 = r0 & 0111
+		 * r0 = r0 + 4
+		 * 4를 더한 이유는 다음 시간에.... 
+		 */
 
        clz     r1, r3          @ WayShift
        add     r4, r3, #1      @ NumWays
@@ -62,6 +82,7 @@ ENTRY(v7_invalidate_l1)
        dsb     st
        isb
        ret     lr
+
 ENDPROC(v7_invalidate_l1)
 
 /*

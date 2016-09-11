@@ -269,6 +269,9 @@ __v7_cr7mp_setup:
 	mov	r10, #(1 << 0)			@ Cache/TLB ops broadcasting
 	b	1f
 __v7_ca7mp_setup:
+/*@Iamroot
+ *우리는 __v7_ca7mp_setup:를 본다.
+ */
 __v7_ca12mp_setup:
 __v7_ca15mp_setup:
 __v7_b15mp_setup:
@@ -280,6 +283,14 @@ __v7_ca17mp_setup:
 	stmia	r12, {r1-r6, lr}		@ v7_invalidate_l1 touches r0-r6
 	bl      v7_invalidate_l1
 	ldmia	r12, {r1-r6, lr}
+	/*@Iamroot 2016/09/10
+	 * r10 = 0
+	 * r0 = __v7_setup_stack_ptr의 물리주소
+	 * r12 = __v7_setup_stack - __v7_setup_stack_ptr's offset
+	 * r12 = r12 + r0 = __v7_setup_stack의 물리주소
+	 * r12에 r1, r2, r3, r4, r5, r6, lr의 값을 넣는다
+	 * 이후, v7_invalidate_l1 호출/연산 완료 후 복원한다.
+	 */
 #ifdef CONFIG_SMP
 	orr	r10, r10, #(1 << 6)		@ Enable SMP/nAMP mode
 	ALT_SMP(mrc	p15, 0, r0, c1, c0, 1)
@@ -487,6 +498,10 @@ __errata_finish:
 
 	.align	2
 __v7_setup_stack_ptr:
+	/*@Iamroot 2016/09/10
+	#define PHYS_RELATIVE(v_data, v_text) ((v_data) - (v_text))
+	 * __v7_setup_stack_ptr에서 __v7_setup_stack까지 offset를 계산
+	 */
 	.word	PHYS_RELATIVE(__v7_setup_stack, .)
 ENDPROC(__v7_setup)
 
