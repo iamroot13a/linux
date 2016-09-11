@@ -153,8 +153,8 @@ ENTRY(stext)
 	 * r4 = (r3 - r4) (==delta) 
 		Q: delta값 구하는로직은 매번똑같은데 왜 자꾸 계속구함???
 		A: delta전용특정 레지스터나 스택 이용하는건 비효율적일 것.
-	 * r8 = 0xc000 0000 (==PAGE_OFFSET, 즉 커널의 가상메모리 시작점)
-	 * r8 = (r8 + r4) (== 0xc000 0000 + delta)
+	 * r8 = 0x8000 0000 (==PAGE_OFFSET, 즉 커널의 가상메모리 시작점)
+	 * r8 = (r8 + r4) (== 0x8000 0000 + delta)
 	 */
 #else
 	ldr	r8, =PLAT_PHYS_OFFSET		@ always constant in this case
@@ -194,15 +194,37 @@ ENTRY(stext)
 	ldr	r13, =__mmap_switched		@ address to jump to after
 						@ mmu has been enabled
 	badr	lr, 1f				@ return (PIC) address
+	/*@Iamroot 2016/09/10 
+	 * ldr r13, =__map_swithed
+	 * __mmap_swithed 가상 주소를 r13에 저장한다.
+	 * 다만 왜 r13에 넣는지 이해할 수 없다????
+	 * badr lr, 1f
+	 * THUMB2 mode일 경우에는 불러들일 물리주소를 +1한 후 adr 명령어를 수행한다.
+	 * 아닐 경우엔 adr 명령어와 동일하다.
+	 * raspberry pi2에서는 THUMB2가 아니기 때문에 adr 명령어와 동일하다.
+	 * PIC : Postition Independent Code
+	 */
 #ifdef CONFIG_ARM_LPAE
 	mov	r5, #0				@ high TTBR0
 	mov	r8, r4, lsr #12			@ TTBR1 is swapper_pg_dir pfn
 #else
 	mov	r8, r4				@ set TTBR1 to swapper_pg_dir
+	/*@Iamroot 2016/09/10
+	 * 물리 page table 시작 주소를 r8에 넣는다.
+	 */
+
 #endif
 	ldr	r12, [r10, #PROCINFO_INITFUNC]
 	add	r12, r12, r10
 	ret	r12
+	/*@Iamroot 2016/09/10
+	 * ldr r12, [r10, #PROCINFO_INITFUNC]
+	 * r12 = proc_info_list(r10)->__cpu_flush(#PROCINFO_INITFUNC) 
+	 * r12 = __v7_ca7mp_setup - __v7_ca7mp_proc_info
+	 * r10 = __v7_ca7mp_proc_info
+	 * r12 = r12 + r10 = __v7_ca7mp_setup
+	 * ret r12 연산은 __v7_ca7mp_setup으로 branch한다.
+	 */
 1:	b	__enable_mmu
 ENDPROC(stext)
 	.ltorg
@@ -335,7 +357,7 @@ __create_page_tables:
         /*** @Iamroot: 2016/09/03
         * #PMD_ORDER : 2 
         * r4 : PTE의 시작 주소 
-        * r4와 r5를 2번 shift한 값과 더하여 r3에 저장 한다 
+        * r4와 r5를 2번 shift한 값과 더한 곳(주소)에 r3를 저장 한다 
         * r5에 1바이트씩 더하여 2씩 shift하면 4씩 증가하는 결과가 된다 
         * turn_mmu_on 과 turn_mmu_on_end 사이의 한 섹션에 대하여 맵핑  
         * __turn_mmu_on 의 의미를 알 필요가 있음 ????????  
@@ -344,27 +366,44 @@ __create_page_tables:
 	/*
 	 * Map our RAM from the start to the end of the kernel .bss section.
 	 */
-	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER) 
-        /*** @Iamroot: 2016/09/03
+	add	r0, r4, #PAGE_OFFSET >> (SECTION_SHIFT - PMD_ORDER)
+        /*** @Iamroot: 2016/09/10
         * page_offset(0x80000000) >> 18 = 0x2000
-        * r4 : PTE의 시작 주소 
+        * r4 : PTE의 시작의 물리 주소 = 0x0000_4000 
+		* r0 = 0x0000_6000
         * PMD : page middle directory
         * PGD : page global directory
         * PTE : page table entry
-        @Iamroot 2016/09/03***/
+		* 가상 주소에서 PTE를 만든게 아니라 물리 주소에서 PTE를 만들었기 때문에
+		* r4가 0x8000_4000이 아니라 0x0000_4000이 된다.
+		* r4의 가상주소가 어디에 맵핑되었는지 확인해서 r0에 저장한다.
+        @Iamroot 2016/09/10***/
 	ldr	r6, =(_end - 1)
+		/* @Iamroot 2016/09/10
+		 * r6 = bss section의 마지막 주소 - 1
+		 * 커널 영역에서 bss까지 0x8000 가상 주소와 0x0000 물리 주소를 매핑한다.
+		 */
 	orr	r3, r8, r7
+		/*@Iamroot 2016/09/10
+		 * PTE를 만드는 작업을 한다.
+	     */
 	add	r6, r4, r6, lsr #(SECTION_SHIFT - PMD_ORDER)
+		/* @Iamroot 2016/09/10
+		 * 해당 연산을 통해 r6은 (_end-1) Page Table가 매핑된 가상주소가 나온다.
+		 * r6의 가상주소가 어디에 맵핑되었는지 확인해서 r6에 저장한다.
+		 */
 1:	str	r3, [r0], #1 << PMD_ORDER
 	add	r3, r3, #1 << SECTION_SHIFT
 	cmp	r0, r6
 	bls	1b
-/*** @Iamroot: 2016/09/03
-        r6 : vmlinux 
-        r7 : phy offset 
-        r8 : 0x80000000
-        다음주에 계속.........
-@Iamroot 2016/09/03***/
+		/*** @Iamroot: 2016/09/10 
+      	 *  r7 : phy offset 
+         *	r8 : 0x0000_0000
+		 *	Page table(r0)에 PTE 내용(r3)을 쓰고 r0 = r0 + 4를 수행한다.
+		 *	PTE 내용에서 PA에 해당하는 값을 1mb를 증가시킨다.(PA = PA + 2^20)
+		 *	PTE 주소가 _end까지 도달했는지 확인 후
+		 *	도달 후 넘어갔을 때 끝나고 도달하지 않거나 도달했을 경우 앞의 1: 연산을 반복한다. 
+		@Iamroot 2016/09/10***/
 
 #ifdef CONFIG_XIP_KERNEL
 	/*
@@ -391,6 +430,12 @@ __create_page_tables:
 	 */
 	mov	r0, r2, lsr #SECTION_SHIFT
 	movs	r0, r0, lsl #SECTION_SHIFT
+	/*@Iamroot 2016/09/10
+	 * r2 : ATAG/DTB의 물리주소
+	 * r0 : DTB의 시작 물리주소
+	 * r2에 값이 있는 경우는 DTB가 존재하고 0인 경우에는 DTB가 존재하지 않는다.
+	 * 이 원리를 이용해서 DTB가 존재하는 경우 아래 *ne연산을 수행하고 아니면 넘어간다.
+	 */
 	subne	r3, r0, r8
 	addne	r3, r3, #PAGE_OFFSET
 	addne	r3, r4, r3, lsr #(SECTION_SHIFT - PMD_ORDER)
@@ -398,6 +443,14 @@ __create_page_tables:
 	strne	r6, [r3], #1 << PMD_ORDER
 	addne	r6, r6, #1 << SECTION_SHIFT
 	strne	r6, [r3]
+	/*@Iamroot 2016/09/10
+	 * r8 = kernel의 시작주소
+	 * subne를 이용해서 kernel 시작주소와 DTB의 시작주소의 offset를 구한다.
+	 * 이후 DTB의 가상주소를 구해서 Page Table에 물리주소와 함께 매핑한다.
+	 * 매핑하는 값은 r6이며 r3에 4를 증가한다.
+	 * 그리고 r3 주소에 2^20을 추가해서 매핑값에 저장한다.
+	 * DTB는 2MB 이하인걸로 가정해서 str연산을 두 번만 수행한다.
+	 */
 
 #if defined(CONFIG_ARM_LPAE) && defined(CONFIG_CPU_ENDIAN_BE8)
 	sub	r4, r4, #4			@ Fixup page table pointer
