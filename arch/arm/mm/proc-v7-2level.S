@@ -152,11 +152,27 @@ ENDPROC(cpu_v7_set_pte_ext)
 	 */
 	.macro	v7_ttb_setup, zero, ttbr0l, ttbr0h, ttbr1, tmp
 	mcr	p15, 0, \zero, c2, c0, 2	@ TTB control register
+        /*** @Iamroot: 2016/09/24
+        * TTBCR을 0으로 Set
+        @Iamroot 2016/09/24***/
 	ALT_SMP(orr	\ttbr0l, \ttbr0l, #TTB_FLAGS_SMP)
 	ALT_UP(orr	\ttbr0l, \ttbr0l, #TTB_FLAGS_UP)
 	ALT_SMP(orr	\ttbr1, \ttbr1, #TTB_FLAGS_SMP)
 	ALT_UP(orr	\ttbr1, \ttbr1, #TTB_FLAGS_UP)
+        /*** @Iamroot: 2016/09/24
+        * page entry table의 크기 정책을 Setting(p.1728 참고) 
+        * #TTB_FLAGS_SMP : TTB_IRGN_WBWA|TTB_S|TTB_NOS|TTB_RGN_OC_WBWA 
+        * TTB_IRGN_WBWA : inner cache 정책을 어떻게 할지(write back write allocate)
+        * TTB_S         : sharable 비트를 세팅  
+        * TTB_NOS       : not outer sharable bit -> 0이면 outer 1이면 inner sharable
+        * TTB_RGN_OC_WBWA : outer cache정책
+        * write through : 데이터를 쓰면 cache의 내용이 변경되면서 main memory도 변경 
+        * http://jake.dothome.co.kr/cache1/ 참고 (write through.....)
+        @Iamroot 2016/09/24***/
 	mcr	p15, 0, \ttbr1, c2, c0, 1	@ load TTB1
+        /*** @Iamroot: 2016/09/24
+        * TTB 시작주소에 TTB_FLASGS_SMP를 or연산후 TTB1에 삽입 
+          @Iamroot 2016/09/24***/
 	.endm
 
 	/*   AT

@@ -428,6 +428,9 @@ __create_page_tables:
 	 * Then map boot params address in r2 if specified.
 	 * We map 2 sections in case the ATAGs/DTB crosses a section boundary.
 	 */
+/*** @Iamroot: 2016/09/24
+        1section : 1MB
+@Iamroot 2016/09/24***/
 	mov	r0, r2, lsr #SECTION_SHIFT
 	movs	r0, r0, lsl #SECTION_SHIFT
 	/*@Iamroot 2016/09/10

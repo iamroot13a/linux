@@ -298,6 +298,12 @@ __v7_ca17mp_setup:
 	orr	r10, r10, r0			@ Set required bits
 	teq	r10, r0				@ Were they already set?
 	mcrne	p15, 0, r10, c1, c0, 1		@ No, update register
+        /*** @Iamroot: 2016/09/24
+        * http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0464f/BABGHIBG.html 참고
+        * ACTLR의 6번째 비트가 SMP coherent여부 비트 
+        * 6번째 비트가 1인 r10과 or연산 하여 enable시킴
+        * teq r10, r0로 비교하여 이미 enable되어 있을경우 pass
+        @Iamroot 2016/09/24***/
 #endif
 	b	__v7_setup_cont
 
@@ -443,6 +449,14 @@ __v7_setup_cont:
 	and	r6, r9, #0x0000000f		@ revision
 	orr	r6, r6, r3, lsr #20-4		@ combine variant and revision
 	ubfx	r0, r9, #4, #12			@ primary part number
+        /*** @Iamroot: 2016/09/24
+        * r9: Main ID register
+        * r9가의 implementer가 0x41(ARM Limited)인지 체크, 0x41이 아니면 errata_finish로
+        * MIDR의 variant와 revision을 각각 r3와 r6에 넣고 
+        * r6와 오른쪽으로 16비트 연산된 r3와 or 연산하여 r6에 저장 
+        * ubfx : unsigned bit field extract ->
+        * ubfx    r0, r9, #4, #12 -> r9의 4번째 부터 12비트를 r0에 넣는다 [15:4]
+        @Iamroot 2016/09/24***/
 
 	/* Cortex-A8 Errata */
 	ldr	r10, =0x00000c08		@ Cortex-A8 primary part number
@@ -459,6 +473,9 @@ __v7_setup_cont:
 	teq	r0, r10
 	beq	__ca15_errata
 
+        /*** @Iamroot: 2016/09/24
+        * Errata : 각 칩셋에 버그가 있어서 소프트웨어로 수정하는 함수
+        @Iamroot 2016/09/24***/
 __errata_finish:
 	mov	r10, #0
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
@@ -467,6 +484,11 @@ __errata_finish:
 	v7_ttb_setup r10, r4, r5, r8, r3	@ TTBCR, TTBRx setup
 	ldr	r3, =PRRR			@ PRRR
 	ldr	r6, =NMRR			@ NMRR
+        /*** @Iamroot: 2016/09/24
+        *  .equ	PRRR,	0xff0a81a8
+        *  .equ	NMRR,	0x40e040e0
+        *  TEX remap시 사용 - 다음 시간에 계속 
+        @Iamroot 2016/09/24***/
 	mcr	p15, 0, r3, c10, c2, 0		@ write PRRR
 	mcr	p15, 0, r6, c10, c2, 1		@ write NMRR
 #endif

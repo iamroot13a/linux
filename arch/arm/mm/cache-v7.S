@@ -46,8 +46,10 @@ ENTRY(v7_invalidate_l1) @Iamroot 2016/09/10 invalidate 용어는 Google Docs 참
 	   /*@Iamroot 2016/09/10
 		* movw : 2바이트(word) 단위로 mov한다.
 		* word 단위를 넘어선 숫자를 읽어들이시 0으로 받아들인다.
-		* r0에 Numset 이하 [12:0]비트를 없앤 후 0x7ffff와 and연산을 수행한다.
+		* r0에 Numset 이하 [12:0]비트를 없앤 후 0x7fff와 and연산을 수행한다.
 		* 수행한 값을 r2에 넣는다.
+                * r2 = (Number of sets in cache(numsets)) - 1'
+                * Cache size / line size = set num
 		*/
 
        movw    r1, #0x3ff
@@ -55,22 +57,35 @@ ENTRY(v7_invalidate_l1) @Iamroot 2016/09/10 invalidate 용어는 Google Docs 참
        and     r3, r1, r0, lsr #3      @ NumWays - 1
        add     r2, r2, #1              @ NumSets
    		/*@Iamroot 2016/09/10
+                 * r3 = Associativity -> (Associativity of cache) - 1 
 		 * r0에 LineSize 이하 [2:0]비트를 없앤 후 0x3ff와 and연산을 수행한다.
 		 * 수행한 값을 r3에 넣는다.
 		 * r2 = r2 + 0x0001
 		 */
        and     r0, r0, #0x7
        add     r0, r0, #4      @ SetShift
-		/*@Iamroot 2016/09/10
+		/*@Iamroot 2016/09/10 & 2016/09/24
+                 * r0 = line size = (Log 2 (Number of words in cache line)) -2 
 		 * r0 = r0 & 0111
-		 * r0 = r0 + 4
-		 * 4를 더한 이유는 다음 시간에.... 
+		 * r0 = r0 + 4  (1011) -> 11
 		 */
 
        clz     r1, r3          @ WayShift
        add     r4, r3, #1      @ NumWays
+/*** @Iamroot: 2016/09/24
+       clz : count leading zero 
+       clz : msb에서부터 bit가 첫번째 1이 나올 때까지 0이 나오는 개수 계산 
+       way의 수를 계산하기 위하여 (p.1742 참고)
+       레지스터의 최상위 32비트 수부터 n개까지 way의 index를 나타냄 
+       ex) 4-way associativitiy일 경우 associatitvity 가 3이므로 b11인데 
+           r3의 값은 000......0011이므로 r1은 29
+           r4 : 4 -> 3 + 1
+@Iamroot 2016/09/24***/
 1:     sub     r2, r2, #1      @ NumSets--
        mov     r3, r4          @ Temp = NumWays
+       /*** @Iamroot: 2016/09/24
+         index 로 접근하기 위하여 r2에 -1을 함 
+         @Iamroot 2016/09/24***/
 2:     subs    r3, r3, #1      @ Temp--
        mov     r5, r3, lsl r1
        mov     r6, r2, lsl r0
@@ -82,6 +97,21 @@ ENTRY(v7_invalidate_l1) @Iamroot 2016/09/10 invalidate 용어는 Google Docs 참
        dsb     st
        isb
        ret     lr
+/*** @Iamroot: 2016/09/24
+      r3도 index로 접근하기 위하여 -1 
+      r2 : set
+      r3 : way
+      ex) 4way로 가정하여 
+      * r3 = 3, r2 = 1, r0 = 5
+      * 4way일때 clz r1, r3에서 r1은 29가 삽입됨  
+      * r3에 lsl r1(29)을 하면 way의 영역(31-30 p.1742참고)에 r3의 값이 들어감
+      * 즉, r5는 r3의 값 즉 3이 way영역에 있는 결과물 
+      * r2의 값이 1고 r0의 값이 5이므로 level영역은 1~3, SBZ는 4, set의 값은 1이 되고 이값을 r6에삽입
+      * r5를 r6와 or 연산후 mcr 명령 
+      bgt : branch greater than 
+      way의 값이 0이 될때까지 연산 
+      p.1742 
+@Iamroot 2016/09/24***/
 
 ENDPROC(v7_invalidate_l1)
 
