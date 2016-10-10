@@ -80,6 +80,10 @@ ENDPROC(__vet_atags)
  */
 	__INIT
 __mmap_switched:
+/*@Iamroot 2016/10/08
+ * 다음 시간에...
+ */
+
 	adr	r3, __mmap_switched_data
 
 	ldmia	r3!, {r4, r5, r6, r7}

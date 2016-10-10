@@ -195,7 +195,7 @@ ENTRY(stext)
 						@ mmu has been enabled
 	badr	lr, 1f				@ return (PIC) address
 	/*@Iamroot 2016/09/10 
-	 * ldr r13, =__map_swithed
+	 * ldr r13, =__mmap_swithed
 	 * __mmap_swithed 가상 주소를 r13에 저장한다.
 	 * 다만 왜 r13에 넣는지 이해할 수 없다????
 	 * badr lr, 1f
@@ -616,6 +616,10 @@ __secondary_data:
  *  r13 = *virtual* address to jump to upon completion
  */
 __enable_mmu:
+/*@Iamroot 2016/10/08
+ * proc_info_initfunc를 수행한 r0로부터 버전에 맞게 세팅하는 부분
+ */
+
 #if defined(CONFIG_ALIGNMENT_TRAP) && __LINUX_ARM_ARCH__ < 6
 	orr	r0, r0, #CR_A
 #else
@@ -636,6 +640,10 @@ __enable_mmu:
 	mov	r5, #DACR_INIT
 	mcr	p15, 0, r5, c3, c0, 0		@ load domain access register
 	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
+	/*@Iamroot 2016/10/08
+	 * DACR 초기화한 값을 CP15에 load한다.
+	 * 이후, TTBR Pointer를 CP15에 load한다.
+	 */
 #endif
 	b	__turn_mmu_on
 ENDPROC(__enable_mmu)
@@ -665,6 +673,16 @@ ENTRY(__turn_mmu_on)
 	mov	r3, r3
 	mov	r3, r13
 	ret	r3
+	/*@Iamroot 2016/10/08
+	 * instr_sync : isb와 동일한 의미
+	 * mcr	p15, 0, r0, c1, c0, 0 를 하면 mmu가 켜진다.(SCTLR m비트가 set가 되어있기 때문이다.)
+	 * instr_sync 전후에 똑같은 레지스터 mov하고 id reg를 read하는가?
+	 * 1. cache line size는 32바이트여서 line size를 맞추기 위해 8개의 명령어가 필요하며
+	 *    mov r0, r0같은 NOP를 수행하는 명령어를 수행한다.
+	 * 2. id reg read하는 이유는 XScale cpu의 호환성을 위해서다.
+	 * 이후 stack pointer(__mmap_swithed's virtual address)를 id register에 넣고 r3를 return한다.
+	 */
+
 __turn_mmu_on_end:
 ENDPROC(__turn_mmu_on)
 	.popsection

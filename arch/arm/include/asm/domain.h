@@ -70,6 +70,14 @@
 	 domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
 	 domain_val(DOMAIN_IO, DOMAIN_CLIENT) | \
 	 domain_val(DOMAIN_VECTORS, DOMAIN_CLIENT))
+/*@Iamroot 2016/10/08
+ * raspberry pi2에는 CONFIG_CPU_SW_DOMAIN_PAN이 not set
+ * domain은 PTE Privilege level이다.
+ * page table(section)의 domain bit에서 DACR를 선택할 수 있다.
+ * DACR은 총 16개의 Domain로 나누어진다.(PRRR, MNRR과 같은 맥락)
+ * 그런데 왜 DACR에서 Domain가 16개? https://goo.gl/HB2tPu 링크에서 Answer 항목 참고
+ */
+
 #endif
 
 #define __DACR_DEFAULT \

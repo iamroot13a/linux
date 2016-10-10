@@ -487,8 +487,13 @@ __errata_finish:
         /*** @Iamroot: 2016/09/24
         *  .equ	PRRR,	0xff0a81a8
         *  .equ	NMRR,	0x40e040e0
-        *  TEX remap시 사용 - 다음 시간에 계속 
-        @Iamroot 2016/09/24***/
+		*  PRRR, NMRR은 register 일종
+        *  SCTLR의 TRE bit가 1이 되면(TEX-Remap Enable)
+		*  Short-descriptor의 TEX와 C, B비트를 다르게 활용한다.
+		*  TEX-Remap가 Enable가 되어있으면 PRRR와 NMRR비트에 따라 메모리 타입과 Cache 정책이 결정된다.
+		*  이 Cache는 TLB가 아니라 전체 Cache이다.
+		*  Big-Little 아키텍처에서 CPU 클러스터를 마이그레이션을 한방에 할 때도 사용한다.
+		@Iamroot 2016/09/24***/
 	mcr	p15, 0, r3, c10, c2, 0		@ write PRRR
 	mcr	p15, 0, r6, c10, c2, 1		@ write NMRR
 #endif
@@ -498,6 +503,11 @@ __errata_finish:
 	and	r0, r0, #(0xf << 12)		@ ThumbEE enabled field
 	teq	r0, #(1 << 12)			@ check if ThumbEE is present
 	bne	1f
+	/*@Iamroot 2016/10/08
+ 	 * ThumbEE를 지원하는지의 여부를 판단하는 부분
+	 * 지원하면 아래 코드를, 지원하지 않으면 1f로 넘어간다.
+	 * raspberrypi2에서는 지원함
+ 	 */
 	mov	r3, #0
 	mcr	p14, 6, r3, c1, c0, 0		@ Initialize TEEHBR to 0
 	mrc	p14, 6, r0, c0, c0, 0		@ load TEECR
@@ -507,21 +517,41 @@ __errata_finish:
 #endif
 	adr	r3, v7_crval
 	ldmia	r3, {r3, r6}
+	/*@Iamroot 2016/10/08
+ 	 * r3 = clear=0x2120c302
+	 * r6 = mmuset=0x10c03c7d
+	 * 더 자세한 사항은 arch/arm/mm/proc-v7-2level.S에서 v7_crval 검색
+ 	 */
+
  ARM_BE8(orr	r6, r6, #1 << 25)		@ big-endian page tables
 #ifdef CONFIG_SWP_EMULATE
 	orr     r3, r3, #(1 << 10)              @ set SW bit in "clear"
 	bic     r6, r6, #(1 << 10)              @ clear it in "mmuset"
+	/*@Iamroot 2016/10/08
+	 * raspberry pi2에서는 CONFIG_SWP_EMULATE가 define되어있다.
+ 	 * r3 = 0x2120c702
+	 * r6 = 0x10c0387d
+	 * SWP : Memory와 register를 word 단위로 swap
+	 * SWP instruction 명령어를 사용여부를 정함
+ 	 */
 #endif
    	mrc	p15, 0, r0, c1, c0, 0		@ read control register
 	bic	r0, r0, r3			@ clear bits them
 	orr	r0, r0, r6			@ set them
+
+	/*@Iamroot 2016/10/08
+ 	 * r3 = 0b0010 0001 0010 0000 1100 0111 0000 0010
+	 * r6 = 0b0001 0000 1100 0000 0011 1000 0111 1101
+	 * SCTLR의 AFE, VE, FI, RR, SW, A비트를 clear하고(r3를 bic)
+	 * TRE, U, V, I, Z, CP15BEN, C, M비트를 set한다.(r6를 orr)
+	 */
  THUMB(	orr	r0, r0, #1 << 30	)	@ Thumb exceptions
 	ret	lr				@ return to head.S:__ret
 
 	.align	2
 __v7_setup_stack_ptr:
 	/*@Iamroot 2016/09/10
-	#define PHYS_RELATIVE(v_data, v_text) ((v_data) - (v_text))
+	 * #define PHYS_RELATIVE(v_data, v_text) ((v_data) - (v_text))
 	 * __v7_setup_stack_ptr에서 __v7_setup_stack까지 offset를 계산
 	 */
 	.word	PHYS_RELATIVE(__v7_setup_stack, .)

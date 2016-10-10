@@ -25,6 +25,10 @@
 
 /* PTWs cacheable, inner WBWA shareable, outer WBWA not shareable */
 #define TTB_FLAGS_SMP	TTB_IRGN_WBWA|TTB_S|TTB_NOS|TTB_RGN_OC_WBWA
+/*@Iamroot 2016/10/08
+ * TTB1[6:0]에 들어갈 값을 Setting한다.
+ */
+
 #define PMD_FLAGS_SMP	PMD_SECT_WBWA|PMD_SECT_S
 
 /*
@@ -145,6 +149,9 @@ ENDPROC(cpu_v7_set_pte_ext)
 	 */
 .equ	PRRR,	0xff0a81a8
 .equ	NMRR,	0x40e040e0
+/*@Iamroot 2016/10/08
+ * equ는 #define의 어셈블리어화 시킨 gas 디렉티브
+ */
 
 	/*
 	 * Macro for setting up the TTBRx and TTBCR registers.
@@ -153,7 +160,7 @@ ENDPROC(cpu_v7_set_pte_ext)
 	.macro	v7_ttb_setup, zero, ttbr0l, ttbr0h, ttbr1, tmp
 	mcr	p15, 0, \zero, c2, c0, 2	@ TTB control register
         /*** @Iamroot: 2016/09/24
-        * TTBCR을 0으로 Set
+        * TTBCR을 0으로 Set(초기화)
         @Iamroot 2016/09/24***/
 	ALT_SMP(orr	\ttbr0l, \ttbr0l, #TTB_FLAGS_SMP)
 	ALT_UP(orr	\ttbr0l, \ttbr0l, #TTB_FLAGS_UP)
@@ -171,7 +178,7 @@ ENDPROC(cpu_v7_set_pte_ext)
         @Iamroot 2016/09/24***/
 	mcr	p15, 0, \ttbr1, c2, c0, 1	@ load TTB1
         /*** @Iamroot: 2016/09/24
-        * TTB 시작주소에 TTB_FLASGS_SMP를 or연산후 TTB1에 삽입 
+        * TTB 시작주소(\ttbr1)에 TTB_FLASGS_SMP를 or연산후 TTB1에 삽입 
           @Iamroot 2016/09/24***/
 	.endm
 
@@ -185,3 +192,9 @@ ENDPROC(cpu_v7_set_pte_ext)
 	.type	v7_crval, #object
 v7_crval:
 	crval	clear=0x2120c302, mmuset=0x10c03c7d, ucset=0x00c01c7c
+	/*@Iamroot
+	 * config_mmu가 set되어있으면 clear와 mmuset를 사용하고 안되어 있으면 clear와 ucset를 사용함
+ 	 * 예를 들어 raspberry pi2에서는 config_mmu가 set되어있기 때문에
+	 * clear와 mmuset를 참고한다.
+ 	 */
+
