@@ -90,6 +90,11 @@ static inline struct thread_info *current_thread_info(void) __attribute_const__;
 
 static inline struct thread_info *current_thread_info(void)
 {
+    /*** @Iamroot: 2016/10/15
+    * 현재 thread info의 시작 주소를 리턴한다
+    * THREAD_SIZE(8092)를 -1 하여 NOT 한후 현재 stack pointer와 &연산 하면 stack point의 
+    * 시작 주소를 가리키는데 이것이 thread info의 시작주소 
+    @Iamroot 2016/10/15***/
 	return (struct thread_info *)
 		(current_stack_pointer & ~(THREAD_SIZE - 1));
 }

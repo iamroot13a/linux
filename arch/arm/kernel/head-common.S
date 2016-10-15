@@ -80,25 +80,49 @@ ENDPROC(__vet_atags)
  */
 	__INIT
 __mmap_switched:
-/*@Iamroot 2016/10/08
- * 다음 시간에...
- */
-
 	adr	r3, __mmap_switched_data
 
 	ldmia	r3!, {r4, r5, r6, r7}
+        /*** @Iamroot: 2016/10/15
+        * r4 : __data_loc
+        * r5 : _sdata
+        * r6 : __bss_start
+        * r7 : _end
+        @Iamroot 2016/10/15***/
 	cmp	r4, r5				@ Copy data segment if needed
 1:	cmpne	r5, r6
 	ldrne	fp, [r4], #4
 	strne	fp, [r5], #4
 	bne	1b
+        /*** @Iamroot: 2016/10/15
+        * __data_loc : 바이너리 파일(binary fìle)에서 
+        *              초기화된 데이터 (initialized data) 영역의 시작위치
+        * _sdata : 일반적으로 __data_loc와  동일하지만 XIP 커널의 경우 RAM영역으로 바뀜 
+        *        : 매모리 영역에서 초기화된 데이터 영역의 시작 위치 
+        * 
+        * r4(__data_loc)와 r5(_sdata)와 비교 하여 같지 않을경우 XIP커널이라는 뜻으로 
+        * 명령을 수행 
+        *
+        * __data_loc을 _sdata로 복사
+        @Iamroot 2016/10/15***/
 
 	mov	fp, #0				@ Clear BSS (and zero fp)
+    /*** @Iamroot: 2016/10/15
+    * fp == r11 -> frame pointer
+    * 함수가 실행중일때 함수가 차지하고 있는 영역(stack frame)의 시작 부분 
+    @Iamroot 2016/10/15***/
 1:	cmp	r6, r7
 	strcc	fp, [r6],#4
 	bcc	1b
+        /*** @Iamroot: 2016/10/15
+        * bss 영역 초기화 
+        * cc : carry clear
+        @Iamroot 2016/10/15***/
 
  ARM(	ldmia	r3, {r4, r5, r6, r7, sp})
+    /*** @Iamroot: 2016/10/15
+    * 위에 ldmia 명령어를 수행할때 r3!를 통해서 수행했으므로 processor_id 부터 불러옴 
+    @Iamroot 2016/10/15***/
  THUMB(	ldmia	r3, {r4, r5, r6, r7}	)
  THUMB(	ldr	sp, [r3, #16]		)
 	str	r9, [r4]			@ Save processor ID
@@ -121,6 +145,10 @@ __mmap_switched_data:
 	.long	__atags_pointer			@ r6
 #ifdef CONFIG_CPU_CP15
 	.long	cr_alignment			@ r7
+        /*** @Iamroot: 2016/10/15
+        * CP15 c1 레지스터의 A 필드(cr_alignment)는 데이터 주소 정렬 오류의
+        * 허용 유무를 결정한다.
+        @Iamroot 2016/10/15***/
 #else
 	.long	0				@ r7
 #endif

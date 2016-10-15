@@ -2541,6 +2541,10 @@ void yield(void);
 union thread_union {
 	struct thread_info thread_info;
 	unsigned long stack[THREAD_SIZE/sizeof(long)];
+        /*** @Iamroot: 2016/10/15
+        * THREAD_SIZE : page_size(4096) * 2 
+        * THREAD_SIZE/sizeof(long) : 2048
+        @Iamroot 2016/10/15***/
 };
 
 #ifndef __HAVE_ARCH_KSTACK_END
