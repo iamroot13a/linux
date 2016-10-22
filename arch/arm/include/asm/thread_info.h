@@ -40,6 +40,9 @@ struct cpu_context_save {
 	__u32	sp;
 	__u32	pc;
 	__u32	extra[2];		/* Xscale 'acc' register, etc */
+#if 0  /* @Iamroot: 2016/10/15 */
+        다음
+#endif /* @Iamroot  */
 };
 
 /*
@@ -65,6 +68,28 @@ struct thread_info {
 #ifdef CONFIG_ARM_THUMBEE
 	unsigned long		thumbee_state;	/* ThumbEE Handler Base register */
 #endif
+
+#if 0  /* @Iamroot: 2016/10/15 */
+        asm_do_IRQ
+	unsigned long		flags;	    
+	int			preempt_count;	
+	mm_segment_t		addr_limit;	
+	struct task_struct	*task;		
+	__u32			cpu;		
+	__u32			cpu_domain;	
+	struct cpu_context_save	cpu_context;	
+	__u32			syscall;	
+	__u8			used_cp[16];	
+	unsigned long		tp_value[2];	
+#ifdef CONFIG_CRUNCH
+	struct crunch_state	crunchstate;
+#endif
+	union fp_state		fpstate __attribute__((aligned(8)));
+	union vfp_state		vfpstate;
+#ifdef CONFIG_ARM_THUMBEE
+	unsigned long		thumbee_state;	
+#endif
+#endif /* @Iamroot  */
 };
 
 #define INIT_THREAD_INFO(tsk)						\
