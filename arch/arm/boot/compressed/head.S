@@ -118,7 +118,8 @@
 /*** @iamroot   20160618  스터디 시작
   
   섹션정의부분 : .section name // .start 섹션 정의
-   
+   .section ".start" : .text 영역 중 .start 영역을 지정
+  자세한 메모리 영역 구조는 arch/arm/boot/compresssed/vmlunux.lds.S 38번 line 참고
     #alloc : gas directives flag //  elf영역에서 메모리에 올린다고 정의
 
     - elf (Executable and Linkable Format) : 컴파일후 아웃풋 파일 실행 파일, 목적 파일, 공유 라이브러리 그리고 코어 덤프를 위한 리눅스 표준 파일 형식
@@ -173,7 +174,9 @@ arm에서는 @가 주석이기 때문에 #으로 타입 설정**/
  이유? 여러가지 부트로더 중 하나의 부트로더가 0x20 에서 실행하지 않으면 에러가 발생하기 때문에 의미없는 코드 추가
  **/
 
-   ARM(		mov	r0, r0		) /** @iamroot r0 레지스터를 r0 레지스터로 복사한다 이유??? thumb 인스트럭션과 arm 인스트럭션을 혼용할 때 arm 인스트럭션의 align 맞추기로 활용 **/
+   ARM(		mov	r0, r0		) 
+	/** @iamroot r0 레지스터를 r0 레지스터로 복사한다 이유??? thumb 인스트럭션과 arm 인스트럭션을 혼용할 때 arm 인스트럭션의 align 맞추기로 활용
+	2014년부터 ARM모드만 사용한다(위 영어주석 참고)	**/
    ARM(		b	1f		) /** @iamroot 레이블 1 로분기 f : 1이라는 레이블은 많기 때문에 바로 다음에 가까운 1레이블로 분기한다는 의미 1b의 경우 위에서 찾으라는 의미 **/
  THUMB(		badr	r12, 1f		)
  THUMB(		bx	r12		)
@@ -236,6 +239,7 @@ not_angel:
 		msr	spsr_cxsf, r9		@ Save the CPU boot mode in
 						@ SPSR
 		/** @iamroot 
+		  	r9를 SPSR에 넣는다.
 			spsr_cxsf: google docs 참조 
 			http://egloos.zum.com/recipes/v/5033184
 		**/
@@ -276,7 +280,8 @@ not_angel:
 		/* Determine final kernel image address. */
 		add	r4, r4, #TEXT_OFFSET
 #else
-		ldr	r4, =zreladdr  /** @iamroot zreladdr 는 압축해제된 커널이 쓰여질 주소 그리고 최종적으로 실행될 주소를 가리킨다. ??? 하드웨어에 맞춰서 주소가 바뀜  "=" 뒤에 레이블이 나와서 주소를 의미함??  **/
+		ldr	r4, =zreladdr  /** @iamroot zreladdr 는 압축해제된 커널이 쓰여질 주소 그리고 최종적으로 실행될 주소를 가리킨다.  
+							   zreladdr는 Makefile에 존재한다."=" 뒤에 레이블이 나와서 주소를 의미함 **/
 #endif
 
 		/*
@@ -285,7 +290,7 @@ not_angel:
 		 * Given that r4 > &_end is most unfrequent, we add a rough
 		 * additional 1MB of room for a possible appended DTB.
 		 */
-		mov	r0, pc              /** @iamroot  현재 프로그램 카운터를 r0로 복사 **/
+		mov	r0, pc              
 		cmp	r0, r4          /** @iamroot 현재 pc주소와 압축해제된 커널의 시작위치를 비교  **/
 		ldrcc	r0, LC0+32   /** pc주소가 커널주소보다 작다면 PTE영역이 침범 될수 있으므로 LC0 + 32 // LC0 + 32  =  커널 이미지 크기 + PTE 크기 (16K) + DTB의 최대사이즈 (1M)  **/
 		addcc	r0, r0, pc   /** @iamroot 현재위치에서 위에 로드한 크기를 더하여 보호해야할 영역을 확보  **/
@@ -970,6 +975,7 @@ __armv7_mmu_cache_on:
  * c1 : CRm
  * 4  : OPcode 2  // 생략가능
  * 결과값 : ID_MMFR0, Memory Model Feature Register 0
+ * 10월 22일 스터디는 여기까지, 다음 시간에...;;
  */
 		tst	r11, #0xf		@ VMSA :  버츄얼 메모리 시스템 아키텍쳐  지원하지 않으면 0000 bit
 		movne	r6, #CB_BITS | 0x02	@ !XN 
@@ -1155,9 +1161,9 @@ __common_mmu_cache_on:
  *  r12 = corrupted
  */
 
-		call_cache_fn:	adr	r12, proc_types		/* @Iamroot : architecture에 맞는 processor type주소를
-						 * 가져온다.
-						 */
+call_cache_fn:	adr	r12, proc_types		
+		/* @Iamroot : architecture에 맞는 processor type주소를 가져온다.
+		 */
 
 #ifdef CONFIG_CPU_CP15
         /* @iamroot CP15 : 시스템 컨트롤을 목적을 가진 코프로세서
