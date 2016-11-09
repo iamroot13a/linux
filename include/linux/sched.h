@@ -209,6 +209,10 @@ extern void proc_sched_set_task(struct task_struct *p);
 #define TASK_UNINTERRUPTIBLE	2
 #define __TASK_STOPPED		4
 #define __TASK_TRACED		8
+/*@Iamroot 161029
+ * state 변수에 들어갈 숫자들에 대한 상세설명
+ */
+
 /* in tsk->exit_state */
 #define EXIT_DEAD		16
 #define EXIT_ZOMBIE		32
@@ -1457,6 +1461,12 @@ struct tlbflush_unmap_batch {
 
 struct task_struct {
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
+	/*@Iamroot 161029
+ 	 * -1 : Disk I/O 등으로 Blocked 되어 Blocked Queue에 있는 상태
+	 *  0 : 현재 Runnable Queue에 존재하며 언제 실행될지 모르는 상태
+	 * >0 : stopped 상태. Debug나 그 외의 이유로 task가 중지되어 있는 상태임
+	 */
+
 	void *stack;
 	atomic_t usage;
 	unsigned int flags;	/* per process flags, defined below */

@@ -140,6 +140,11 @@ void ftrace_likely_update(struct ftrace_branch_data *f, int val, int expect);
 # ifndef unlikely
 #  define unlikely(x)	(__builtin_constant_p(x) ? !!(x) : __branch_check__(x, 0))
 # endif
+/*@Iamroot 161105
+ * likely, unlikely 함수는 branch predition 역할을 수행함.
+ * pipeline을 보다 더 효율적으로 사용하기 위해 사용함.
+ * 자세한 사항은 http://egloos.zum.com/shad0w/v/1399463
+ */
 
 #ifdef CONFIG_PROFILE_ALL_BRANCHES
 /*

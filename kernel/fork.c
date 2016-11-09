@@ -345,6 +345,9 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	struct task_struct *tsk;
 	struct thread_info *ti;
 	int err;
+	/*@Iamroot 161105
+	 * 다음 시간에...
+	 */
 
 	if (node == NUMA_NO_NODE)
 		node = tsk_fork_get_node(orig);
@@ -1288,12 +1291,22 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 {
 	int retval;
 	struct task_struct *p;
+	/*@Iamroot 161105 if clone_flags ~ security_task_create
+	 * clone_flags를 mask한 후 clone's flag의 조합을 검사한다.
+	 * 이후, security_task_create를 통해 clone_flags에 해당하는 권한을 확인한다.
+	 */
 
 	if ((clone_flags & (CLONE_NEWNS|CLONE_FS)) == (CLONE_NEWNS|CLONE_FS))
 		return ERR_PTR(-EINVAL);
+	/*@Iamroot 161105
+	 * CLONE_NEWFS와 CLONE_FS 둘 다 set되면 안된다.
+	 */
 
 	if ((clone_flags & (CLONE_NEWUSER|CLONE_FS)) == (CLONE_NEWUSER|CLONE_FS))
 		return ERR_PTR(-EINVAL);
+	/*@Iamroot 161105
+	 * CLONE_NEWUSER와 CLONE_FS 둘 다 set되면 안된다.
+	 */
 
 	/*
 	 * Thread groups must share signals as well, and detached threads
@@ -1319,6 +1332,10 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	if ((clone_flags & CLONE_PARENT) &&
 				current->signal->flags & SIGNAL_UNKILLABLE)
 		return ERR_PTR(-EINVAL);
+	/*@Iamroot 161105
+	 * init프로세스만 SIGNAL_UNKILLABLE bit가 set되어야 하고
+	 * 나머지 프로세스는 SIGNAL_UNKILLABLE bit가 clear되어야 한다.
+	 */
 
 	/*
 	 * If the new process will be in a different pid or user namespace
@@ -1330,6 +1347,13 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 				current->nsproxy->pid_ns_for_children))
 			return ERR_PTR(-EINVAL);
 	}
+	/*@Iamroot 161105
+	 * ??? 확실하지 않는 부분(PID 네임스페이스 용어에 대해 자세히 모름)
+	 * 자식프로세스와 부모프로세스가 같은 thread group이면서 
+	 * 유저 네임스페이스와 PID 네임스페이스를 새로 만들었거나 PID 값이 NULL일 때
+	 * PID를 자식에게 줄 PID 부여시 Kernel Panic 현상이 일어남
+	 * 이러한 현상을 방지하기 위한 역할 수행
+	 */
 
 	retval = security_task_create(clone_flags);
 	if (retval)
@@ -1337,6 +1361,10 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 
 	retval = -ENOMEM;
 	p = dup_task_struct(current, node);
+	/*@Iamroot 161029
+ 	 * 리눅스 커널 심층 분석 page 83쪽을 참고(dup_task_struct())
+	 */
+
 	if (!p)
 		goto fork_out;
 
@@ -1758,6 +1786,10 @@ long _do_fork(unsigned long clone_flags,
 		if (likely(!ptrace_event_enabled(current, trace)))
 			trace = 0;
 	}
+	/*@Iamroot 161105
+ 	 * ptrace : process trace
+	 * clone flag에 대한 자세한 정보는 include/uapi/linux/sched.h 7번째부터 참고
+	 */
 
 	p = copy_process(clone_flags, stack_start, stack_size,
 			 child_tidptr, NULL, trace, tls, NUMA_NO_NODE);
@@ -1842,6 +1874,10 @@ SYSCALL_DEFINE0(vfork)
 	return _do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, 0,
 			0, NULL, NULL, 0);
 }
+/*@Iamroot 161029
+ * 리눅스 Application에서 fork, vfork 함수는 위에 나오는 함수를 토대로 사용한다.
+ */
+
 #endif
 
 #ifdef __ARCH_WANT_SYS_CLONE

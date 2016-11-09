@@ -115,6 +115,7 @@ int __init security_module_enable(const char *module)
 			P->hook.FUNC(__VA_ARGS__);		\
 	} while (0)
 
+	//return call_int_hook(task_create, 0, clone_flags);
 #define call_int_hook(FUNC, IRC, ...) ({			\
 	int RC = IRC;						\
 	do {							\

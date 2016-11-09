@@ -138,6 +138,12 @@
 
 #define _RET_IP_		(unsigned long)__builtin_return_address(0)
 #define _THIS_IP_  ({ __label__ __here; __here: (unsigned long)&&__here; })
+/*@Iamroot
+ * C언어에서 &와 && 차이점
+ * 	&&a : a lable의 주소
+ *	&a : a 변수의 주소
+ */
+
 
 #ifdef CONFIG_LBDAF
 # include <asm/div64.h>
