@@ -219,6 +219,13 @@ int tsk_fork_get_node(struct task_struct *tsk)
 	if (tsk == kthreadd_task)
 		return tsk->pref_node_fork;
 #endif
+
+#if 0  /* @Iamroot: 2016.11.12 */
+        kthreadd_task : ktreadd()를 사용하여 만들어진 kernel_threadd의 pointer
+                        새로 만들 thread 가 kernel_thread라면 기존의 커널 스레드와
+                        같은 노드에 할당하고자 한다.
+        새로 생성될 task의 NUMA node를 얻는다
+#endif /* @Iamroot  */
 	return NUMA_NO_NODE;
 }
 

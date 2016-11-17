@@ -140,6 +140,10 @@ static struct kmem_cache *task_struct_cachep;
 static inline struct task_struct *alloc_task_struct_node(int node)
 {
 	return kmem_cache_alloc_node(task_struct_cachep, GFP_KERNEL, node);
+#if 0  /* @Iamroot: 2016.11.12 */
+        GFP_KERNEL : 커널 RAM을 위한 메모리 할당
+        task_struct_cachep : 새로운 task_struct를 위한 cache 
+#endif /* @Iamroot  */
 }
 
 static inline void free_task_struct(struct task_struct *tsk)
@@ -344,13 +348,17 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 {
 	struct task_struct *tsk;
 	struct thread_info *ti;
+#if 0  /* @Iamroot: 2016.11.12 */
+        새 프로세스용 thread_info, task_struct
+#endif /* @Iamroot  */
 	int err;
-	/*@Iamroot 161105
-	 * 다음 시간에...
-	 */
 
 	if (node == NUMA_NO_NODE)
 		node = tsk_fork_get_node(orig);
+#if 0  /* @Iamroot: 2016.11.12 */
+        NUMA : 리눅스에서 메모리 뱅크를 표현하는  단어
+        NUMA_NO_NODE : NUMA에서 지정된 NODE가 없다 
+#endif /* @Iamroot  */
 	tsk = alloc_task_struct_node(node);
 	if (!tsk)
 		return NULL;

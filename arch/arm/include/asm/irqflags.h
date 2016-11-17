@@ -31,6 +31,12 @@ static inline unsigned long arch_local_irq_save(void)
 		: "=r" (flags) : : "memory", "cc");
 	return flags;
 }
+#if 0  /* @Iamroot: 2016.11.12 */
+cpsr값을 레지스터에 읽어와 flags에 저장 한다
+cpsid i -> 인터럽트를 disable하는 명령어 
+"memory"를 명시해 주면, 컴파일러는 어셈블리 코드를 실행하기 전/후에 레지스터에 저장되어 있는 모든 변수의 값을 갱신하도록 한다. 
+"cc"는 컴파일러에게 어셈블리 명령어가 컨디션 코드 플래그를 읽고 쓴다고 알려준다
+#endif /* @Iamroot  */
 
 #define arch_local_irq_enable arch_local_irq_enable
 static inline void arch_local_irq_enable(void)

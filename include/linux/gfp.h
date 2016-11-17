@@ -533,6 +533,10 @@ void page_alloc_init_late(void);
  * hibernation, it is used by PM to avoid I/O during memory allocation while
  * devices are suspended.
  */
+#if 0  /* @Iamroot: 2016.11.12 */
+early boot일 경우에는 gfp_allowed_mask는 GFP_BOOT_MASK로 세팅이 되며
+interrupts가 활성화 될경우 __GFP_BITS_MASK로 세팅이 된다
+#endif /* @Iamroot  */
 extern gfp_t gfp_allowed_mask;
 
 /* Returns true if the gfp_mask allows use of ALLOC_NO_WATERMARK */

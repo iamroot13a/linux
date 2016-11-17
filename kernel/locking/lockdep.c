@@ -2864,6 +2864,9 @@ static void __lockdep_trace_alloc(gfp_t gfp_mask, unsigned long flags)
 	/* We're only interested __GFP_FS allocations for now */
 	if (!(gfp_mask & __GFP_FS))
 		return;
+#if 0  /* @Iamroot: 2016.11.12 */
+        다음 
+#endif /* @Iamroot  */
 
 	/*
 	 * Oi! Can't be having __GFP_FS allocations with IRQs disabled.
@@ -2884,6 +2887,10 @@ void lockdep_trace_alloc(gfp_t gfp_mask)
 		return;
 
 	raw_local_irq_save(flags);
+#if 0  /* @Iamroot: 2016.11.12 */
+        인터럽트를 비활성화 하기 전에 현재 cpsr의 상태를 flags에 넣고 
+        인터럽트를 비활성화 한다.
+#endif /* @Iamroot  */
 	check_flags(flags);
 	current->lockdep_recursion = 1;
 	__lockdep_trace_alloc(gfp_mask, flags);

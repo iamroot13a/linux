@@ -3430,6 +3430,9 @@ slab_alloc(struct kmem_cache *cachep, gfp_t flags, unsigned long caller)
 	void *objp;
 
 	flags &= gfp_allowed_mask;
+#if 0  /* @Iamroot: 2016.11.12 */
+       gfp_allowed_mask = __GFP_BITS_MASK -> 하위 25비트를 전부 1로 세팅한 값
+#endif /* @Iamroot  */
 	cachep = slab_pre_alloc_hook(cachep, flags);
 	if (unlikely(!cachep))
 		return NULL;
@@ -3605,7 +3608,8 @@ void ___cache_free(struct kmem_cache *cachep, void *objp,
 void *kmem_cache_alloc(struct kmem_cache *cachep, gfp_t flags)
 {
 	void *ret = slab_alloc(cachep, flags, _RET_IP_);
-
+#if 0  /* @Iamroot: 2016.11.12 */
+#endif /* @Iamroot  */
 	kasan_slab_alloc(cachep, ret, flags);
 	trace_kmem_cache_alloc(_RET_IP_, ret,
 			       cachep->object_size, cachep->size, flags);
