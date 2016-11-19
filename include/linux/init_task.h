@@ -158,6 +158,10 @@ extern struct task_group root_task_group;
 #endif
 
 #define INIT_TASK_COMM "swapper"
+/*@Iamroot 161119
+ * 0번 프로세스 이름을 swapper로 설정
+ */
+
 
 #ifdef CONFIG_RT_MUTEXES
 # define INIT_RT_MUTEXES(tsk)						\

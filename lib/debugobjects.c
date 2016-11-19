@@ -1027,6 +1027,11 @@ void __init debug_objects_early_init(void)
 
 	for (i = 0; i < ODEBUG_POOL_SIZE; i++)
 		hlist_add_head(&obj_static_pool[i].node, &obj_pool);
+
+	/*@Iamroot 161119
+	 * ODEBUG_HASH_SIZE = 16384
+	 */
+
 }
 
 /*

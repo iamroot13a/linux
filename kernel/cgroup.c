@@ -5559,6 +5559,11 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
  */
 int __init cgroup_init_early(void)
 {
+	/*@Iamroot 161119
+	 * 다음 시간에...
+	 * cgroup에 대해 좀 더 파악 후 소스분석
+	 */
+
 	static struct cgroup_sb_opts __initdata opts;
 	struct cgroup_subsys *ss;
 	int i;

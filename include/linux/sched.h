@@ -1575,6 +1575,10 @@ struct task_struct {
 #ifdef CONFIG_CC_STACKPROTECTOR
 	/* Canary value for the -fstack-protector gcc feature */
 	unsigned long stack_canary;
+	/*@Iamroot
+	 * gcc 컴파일 옵션에서 -fstack-protector 옵션 부여시 stack_canary 변수 선언
+	 */
+
 #endif
 	/*
 	 * pointers to (original) parent process, youngest child, younger sibling,
@@ -3001,6 +3005,10 @@ static inline void setup_thread_stack(struct task_struct *p, struct task_struct 
  * When the stack grows up, this is the highest address.
  * Beyond that position, we corrupt data on the next page.
  */
+/*@Iamroot
+ * end_of_stack은 스택이 어떻게 쌓이냐에 따라 스택의 끝 주소를 구하는 함수
+ */
+
 static inline unsigned long *end_of_stack(struct task_struct *p)
 {
 #ifdef CONFIG_STACK_GROWSUP

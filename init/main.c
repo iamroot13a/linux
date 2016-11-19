@@ -480,6 +480,12 @@ asmlinkage __visible void __init start_kernel(void)
 {
 	char *command_line;
 	char *after_dashes;
+	/*@Iamroot 161119
+	 * set_task_stack_end_magic()를 통해 stack 끝 부분에 magic number를 설정해 stack overflow 공격 방지
+	 * smp_setup_processor_id()를 통해 멀티프로세싱 프로세서의 cpuid를 지정
+	 * debug_objects_early_init() 함수는 넘어감
+	 * boot_init_stack_canary() 함수도 넘어감
+	 */
 
 	set_task_stack_end_magic(&init_task);
 	smp_setup_processor_id();

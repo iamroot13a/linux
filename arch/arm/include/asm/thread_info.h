@@ -40,9 +40,6 @@ struct cpu_context_save {
 	__u32	sp;
 	__u32	pc;
 	__u32	extra[2];		/* Xscale 'acc' register, etc */
-#if 0  /* @Iamroot: 2016/10/15 */
-        다음
-#endif /* @Iamroot  */
 };
 
 /*

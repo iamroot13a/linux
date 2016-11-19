@@ -589,16 +589,31 @@ void __init smp_setup_processor_id(void)
 	int i;
 	u32 mpidr = is_smp() ? read_cpuid_mpidr() & MPIDR_HWID_BITMASK : 0;
 	u32 cpu = MPIDR_AFFINITY_LEVEL(mpidr, 0);
+	/*@Iamroot 161119
+	 * mpidr : 멀티프로세싱 시스템에서 추가 프로세서 식별 메커니즘을 제공하고 다중 처리 확장에 포함되는지 여부를 나타낸다.(ARM reference 1651쪽 참고)
+	 * mpidr = smp이면 0xFFFFFF mask하고 아니면 0
+	 * cpu = mpidr[7:0]를 읽어온 값 - 현재 실행하는 cpuid
+	 */
 
 	cpu_logical_map(0) = cpu;
 	for (i = 1; i < nr_cpu_ids; ++i)
 		cpu_logical_map(i) = i == cpu ? 0 : i;
+	/*@Iamroot 161119
+	 * cpu_logical_map() : CPU Core의 논리 번호를 지정
+	 */
 
 	/*
 	 * clear __my_cpu_offset on boot CPU to avoid hang caused by
 	 * using percpu variable early, for example, lockdep will
 	 * access percpu variable inside lock_release
 	 */
+	/*@Iamroot 161119
+	 * percpu : cpu별로 데이터를 생성하고 관리할 수 있는 인터페이스
+	 * set_my_cpu_offset() : percpu를 사용하기 위해 per_cpu offset를 TPIDRPRW에 저장
+	 * TPIDRPRW : ARM reference 1722쪽 참고
+	 *pr_info() = fprintf(stderr, args);
+	 */
+
 	set_my_cpu_offset(0);
 
 	pr_info("Booting Linux on physical CPU 0x%x\n", mpidr);
