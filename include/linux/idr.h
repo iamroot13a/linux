@@ -48,6 +48,9 @@ struct idr {
 	int			id_free_cnt;
 	struct idr_layer	*id_free;
 };
+#if 0  /* @Iamroot: 2016.11.26 */
+        rcu : read copy update
+#endif /* @Iamroot  */
 
 #define IDR_INIT(name)							\
 {									\

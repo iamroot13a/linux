@@ -3097,7 +3097,10 @@ void lockdep_init_map(struct lockdep_map *lock, const char *name,
 		      struct lock_class_key *key, int subclass)
 {
 	int i;
-
+#if 0  /* @Iamroot: 2016.11.26 */
+        lockdep = lock dependency
+        cgroup에 관한것을 모두 보고 다시 LOCK을 공부하기로 함
+#endif /* @Iamroot  */
 	kmemcheck_mark_initialized(lock, sizeof(*lock));
 
 	for (i = 0; i < NR_LOCKDEP_CACHING_CLASSES; i++)

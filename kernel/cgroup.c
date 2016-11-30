@@ -141,6 +141,14 @@ static struct cgroup_subsys *cgroup_subsys[] = {
 };
 #undef SUBSYS
 
+#if 0  /* @Iamroot: 2016.11.26 */
+1. enum cgroup_subsys_id 에서 미리 _x ## _cgrp_id 값을 설정한다 
+2. static struct cgroup_subsys *cgroup_subsys[] = {
+    }
+    의 경우 enum cgroup_subsys_id 에서 만들어진 변수를 인덱스로 사용하여 
+    각각의 인덱스에 &_x ## cgrp_subsys의 값을 넣는다
+#endif /* @Iamroot  */
+
 /* array of cgroup subsystem names */
 #define SUBSYS(_x) [_x ## _cgrp_id] = #_x,
 static const char *cgroup_subsys_name[] = {
@@ -1942,6 +1950,9 @@ out_unlock:
 static void init_cgroup_housekeeping(struct cgroup *cgrp)
 {
 	struct cgroup_subsys *ss;
+#if 0  /* @Iamroot: 2016.11.26 */
+        cgroup-defs.h
+#endif /* @Iamroot  */
 	int ssid;
 
 	INIT_LIST_HEAD(&cgrp->self.sibling);
@@ -1951,12 +1962,21 @@ static void init_cgroup_housekeeping(struct cgroup *cgrp)
 	mutex_init(&cgrp->pidlist_mutex);
 	cgrp->self.cgroup = cgrp;
 	cgrp->self.flags |= CSS_ONLINE;
+#if 0  /* @Iamroot: 2016.11.26 */
+        cgroup 와 sub system init
+#endif /* @Iamroot  */
 
 	for_each_subsys(ss, ssid)
 		INIT_LIST_HEAD(&cgrp->e_csets[ssid]);
 
 	init_waitqueue_head(&cgrp->offline_waitq);
+#if 0  /* @Iamroot: 2016.11.26 */
+        cgroup 전부 보고 다시 봄 : init_waitqueue_head
+#endif /* @Iamroot  */
 	INIT_WORK(&cgrp->release_agent_work, cgroup_release_agent);
+#if 0  /* @Iamroot: 2016.11.26 */
+        release_agent_work(struct work_struct)를 초기화 시킴 
+#endif /* @Iamroot  */
 }
 
 static void init_cgroup_root(struct cgroup_root *root,
@@ -1966,10 +1986,16 @@ static void init_cgroup_root(struct cgroup_root *root,
 
 	INIT_LIST_HEAD(&root->root_list);
 	atomic_set(&root->nr_cgrps, 1);
+#if 0  /* @Iamroot: 2016.11.26 */
+        root->nr_cgrps : cgrops의 개수
+        atomic_set : 원자적으로 nr_cgrs의 값을 1로 설정한다 
+#endif /* @Iamroot  */
 	cgrp->root = root;
 	init_cgroup_housekeeping(cgrp);
 	idr_init(&root->cgroup_idr);
-
+#if 0  /* @Iamroot: 2016.11.26 */
+        idr :  radix tree의 일종으로 정수 ID와 특정한 포인터 값을 연결시키는 역할을 해 준다.
+#endif /* @Iamroot  */
 	root->flags = opts->flags;
 	if (opts->release_agent)
 		strcpy(root->release_agent_path, opts->release_agent);
@@ -5559,12 +5585,28 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
  */
 int __init cgroup_init_early(void)
 {
-	/*@Iamroot 161119
-	 * 다음 시간에...
-	 * cgroup에 대해 좀 더 파악 후 소스분석
-	 */
 
 	static struct cgroup_sb_opts __initdata opts;
+#if 0  /* @Iamroot: 2016.11.26 */
+        __initdata : __section(.init.data)
+        cgroup 과 namespace의 차이점
+    With:
+
+        cgroup: Control Groups provide a mechanism for aggregating/partitioning sets of tasks, 
+                and all their future children, into hierarchical groups with specialized behaviour.
+
+        namespace: wraps a global system resource in an abstraction 
+                   that makes it appear to the processes within the namespace 
+                   that they have their own isolated instance of the global resource.
+
+    In short:
+
+        Cgroups = limits how much you can use;
+                  자원의 사용량을 제한
+        namespaces = limits what you can see (and therefore use)
+                     특정 유저만 자원을 볼수 있도록 제한
+
+#endif /* @Iamroot  */
 	struct cgroup_subsys *ss;
 	int i;
 
@@ -5572,7 +5614,9 @@ int __init cgroup_init_early(void)
 	cgrp_dfl_root.cgrp.self.flags |= CSS_NO_REF;
 
 	RCU_INIT_POINTER(init_task.cgroups, &init_css_set);
-
+#if 0  /* @Iamroot: 2016.11.26 */
+        idr, rcu, lockdep : cgroup 끝나고 다시 공부
+#endif /* @Iamroot  */
 	for_each_subsys(ss, i) {
 		WARN(!ss->css_alloc || !ss->css_free || ss->name || ss->id,
 		     "invalid cgroup_subsys %d:%s css_alloc=%p css_free=%p id:name=%d:%s\n",
@@ -5580,7 +5624,9 @@ int __init cgroup_init_early(void)
 		     ss->id, ss->name);
 		WARN(strlen(cgroup_subsys_name[i]) > MAX_CGROUP_TYPE_NAMELEN,
 		     "cgroup_subsys_name %s too long\n", cgroup_subsys_name[i]);
-
+#if 0  /* @Iamroot: 2016.11.26 */
+WARN : file 이름과 line number를 프린트해줌 
+#endif /* @Iamroot  */
 		ss->id = i;
 		ss->name = cgroup_subsys_name[i];
 		if (!ss->legacy_name)
@@ -5588,6 +5634,9 @@ int __init cgroup_init_early(void)
 
 		if (ss->early_init)
 			cgroup_init_subsys(ss, true);
+#if 0  /* @Iamroot: 2016.11.26 */
+다음주에 계속
+#endif /* @Iamroot  */
 	}
 	return 0;
 }
