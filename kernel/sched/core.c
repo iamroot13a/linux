@@ -8167,12 +8167,22 @@ static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 static struct cgroup_subsys_state *
 cpu_cgroup_css_alloc(struct cgroup_subsys_state *parent_css)
 {
+	/*@Iamroot 161203
+	 * cgroup 중 cpu 자원 할당에 대해서만 공부
+	 * 나머지 (cpuset, memory...)는 알아서 공부할 것
+	 */
+
 	struct task_group *parent = css_tg(parent_css);
 	struct task_group *tg;
 
 	if (!parent) {
 		/* This is early initialization for the top cgroup */
 		return &root_task_group.css;
+	/*@Iamroot 161203
+	 * cgroup의 부모가 없을 때(top_cgroup) 아래 연산은 하지않고 &root_task_group.css를 반환함
+	 * 안한다면 cgroup의 task를 생성함
+	 */
+
 	}
 
 	tg = sched_create_group(parent);

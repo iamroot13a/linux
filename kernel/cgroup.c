@@ -1970,7 +1970,7 @@ static void init_cgroup_housekeeping(struct cgroup *cgrp)
 		INIT_LIST_HEAD(&cgrp->e_csets[ssid]);
 
 	init_waitqueue_head(&cgrp->offline_waitq);
-#if 0  /* @Iamroot: 2016.11.26 */
+#if 0  /* @Iamroot_TODO: 2016.11.26 */
         cgroup 전부 보고 다시 봄 : init_waitqueue_head
 #endif /* @Iamroot  */
 	INIT_WORK(&cgrp->release_agent_work, cgroup_release_agent);
@@ -5082,6 +5082,12 @@ static void css_release(struct percpu_ref *ref)
 static void init_and_link_css(struct cgroup_subsys_state *css,
 			      struct cgroup_subsys *ss, struct cgroup *cgrp)
 {
+	/*@Iamroot_TODO 161203
+	 * css(cgroup subsys status)를 초기화 후 링크하는 함수
+	 * lockdep 관련 함수는 lockdep 공부 후 공부 예정
+	 */
+
+
 	lockdep_assert_held(&cgroup_mutex);
 
 	cgroup_get(cgrp);
@@ -5092,12 +5098,20 @@ static void init_and_link_css(struct cgroup_subsys_state *css,
 	INIT_LIST_HEAD(&css->sibling);
 	INIT_LIST_HEAD(&css->children);
 	css->serial_nr = css_serial_nr_next++;
+	/*@Iamroot 161203
+	 * serial_nr는 css의 총 갯수를 의미한다.
+	 * 초기 css 갯수는 1개이다.
+	 */
+
 	atomic_set(&css->online_cnt, 0);
 
 	if (cgroup_parent(cgrp)) {
 		css->parent = cgroup_css(cgroup_parent(cgrp), ss);
 		css_get(css->parent);
 	}
+	/*@Iamroot 161203
+	 * cgroup_parent가 NULL이므로 if문은 넘어간다.
+	 */
 
 	BUG_ON(cgroup_css(cgrp, ss));
 }
@@ -5538,6 +5552,9 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 	/* Create the root cgroup state for this subsystem */
 	ss->root = &cgrp_dfl_root;
 	css = ss->css_alloc(cgroup_css(&cgrp_dfl_root.cgrp, ss));
+	/*@Iamroot_TODO 161203
+	 * cgroup_css() : rcu, lockdep 공부 후 체크 예정
+	 */
 	/* We don't handle early failures gracefully */
 	BUG_ON(IS_ERR(css));
 	init_and_link_css(css, ss, &cgrp_dfl_root.cgrp);
@@ -5547,6 +5564,9 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 	 * percpu_ref during early init.  Disable refcnting.
 	 */
 	css->flags |= CSS_NO_REF;
+	/*@Iamroot 161203
+	 * css를 처음 접근했기 때문에 flags를 1로 한다.
+	 */
 
 	if (early) {
 		/* allocation can't be done safely during early init */
@@ -5555,6 +5575,9 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 		css->id = cgroup_idr_alloc(&ss->css_idr, css, 1, 2, GFP_KERNEL);
 		BUG_ON(css->id < 0);
 	}
+	/*@Iamroot 161203
+	 * early는 true이므로 if문을 수행한다.
+	 */
 
 	/* Update the init_css_set to contain a subsys
 	 * pointer to this state - since the subsystem is
@@ -5566,6 +5589,9 @@ static void __init cgroup_init_subsys(struct cgroup_subsys *ss, bool early)
 	have_exit_callback |= (bool)ss->exit << ss->id;
 	have_free_callback |= (bool)ss->free << ss->id;
 	have_canfork_callback |= (bool)ss->can_fork << ss->id;
+	/*@Iamroot 161203
+	 * 13개의 subsys들의 각각의 fork/exit/free/canfork 존재 여부(callback함수) 기록함(with bitmask)
+	 */
 
 	/* At system boot, before all subsystems have been
 	 * registered, no tasks have been forked, so we don't
@@ -5614,7 +5640,7 @@ int __init cgroup_init_early(void)
 	cgrp_dfl_root.cgrp.self.flags |= CSS_NO_REF;
 
 	RCU_INIT_POINTER(init_task.cgroups, &init_css_set);
-#if 0  /* @Iamroot: 2016.11.26 */
+#if 0  /* @Iamroot_TODO: 2016.11.26 */
         idr, rcu, lockdep : cgroup 끝나고 다시 공부
 #endif /* @Iamroot  */
 	for_each_subsys(ss, i) {
@@ -5634,9 +5660,6 @@ WARN : file 이름과 line number를 프린트해줌
 
 		if (ss->early_init)
 			cgroup_init_subsys(ss, true);
-#if 0  /* @Iamroot: 2016.11.26 */
-다음주에 계속
-#endif /* @Iamroot  */
 	}
 	return 0;
 }
