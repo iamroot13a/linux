@@ -217,6 +217,8 @@ static int __idr_pre_get(struct idr *idp, gfp_t gfp_mask)
  *  -ENOSPC if the id space is exhausted,
  *  -ENOMEM if more idr_layers need to be allocated.
  */
+
+ ///*** iamroot 161210, +idr_get_empty_slot() ->  다음시간에 복습요망!! 재 논의 //
 static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 		     gfp_t gfp_mask, struct idr *layer_idr)
 {
@@ -226,14 +228,15 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 
 	id = *starting_id;
  restart:
-	p = idp->top;
+	p = idp->top; 
 	l = idp->layers;
-	pa[l--] = NULL;
+	pa[l--] = NULL; /*** iamroot 161210, pa : 빈 슬롯의 id를 찾는데, 타고내려가면서 찾는 경로 ***/
 	while (1) {
 		/*
 		 * We run around this while until we reach the leaf node...
 		 */
-		n = (id >> (IDR_BITS*l)) & IDR_MASK;
+		n = (id >> (IDR_BITS*l)) & IDR_MASK; /*** iamroot 161210, IDR_BITS : 8, IDR_SIZE : (1 << IDR_BITS)
+		                                                          IDR_MASK : ((1 << IDR_BITS)-1) **/									  **/
 		m = find_next_zero_bit(p->bitmap, IDR_SIZE, n);
 		if (m == IDR_SIZE) {
 			/* no space available go back to previous layer. */
@@ -246,13 +249,13 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 				*starting_id = id;
 				return -EAGAIN;
 			}
-			p = pa[l];
-			BUG_ON(!p);
+			p = pa[l]; /*** iamroot 161210, @pa : idr_layer[MAX_IDR_LEVEL] used as backtrack buffer ***/
+			BUG_ON(!p);/*** iamroot 161210, BUG_ON(condition): do { if (condition) BUG(); } while (0) ***/
 
 			/* If we need to go up one layer, continue the
 			 * loop; otherwise, restart from the top.
 			 */
-			sh = IDR_BITS * (l + 1);
+			sh = IDR_BITS * (l + 1); /*** iamroot 161210, ???  ***/
 			if (oid >> sh == id >> sh)
 				continue;
 			else
@@ -260,7 +263,7 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 		}
 		if (m != n) {
 			sh = IDR_BITS*l;
-			id = ((id >> sh) ^ n ^ m) << sh;
+			id = ((id >> sh) ^ n ^ m) << sh; //*** iamroot 161210, 예) id=0, n=0, m=0xff, l=2 id=0xff0000 //
 		}
 		if ((id >= MAX_IDR_BIT) || (id < 0))
 			return -ENOSPC;
@@ -283,7 +286,7 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 	}
 
 	pa[l] = p;
-	return id;
+	return id; 
 }
 
 static int idr_get_empty_slot(struct idr *idp, int starting_id,
@@ -343,7 +346,25 @@ build_up:
 			__set_bit(0, new->bitmap);
 		p = new;
 	}
-	rcu_assign_pointer(idp->top, p);
+
+	return(v);
+}
+
+/*** iamroot 161210
+    RCU란 리눅스 커널 내에서 주로 읽기 연산만 일어나고 쓰기 연산의 비중은 매우 작은 객체에 주로 쓰이는 동기화 기법이다
+
+    
+    #define rcu_assign_pointer(p, v) smp_store_release(&p, RCU_INITIALIZER(v))
+    rcu_assign_pointer(idp->top, p); // pointing the top of layer
+	idp->layers = layers;  // setting layer
+	v = sub_alloc(idp, &id, pa, gfp_mask, layer_idr);
+	if (v == -EAGAIN)
+		goto build_up;
+	return(v);
+
+***/
+
+rcu_assign_pointer(idp->top, p);
 	idp->layers = layers;
 	v = sub_alloc(idp, &id, pa, gfp_mask, layer_idr);
 	if (v == -EAGAIN)
@@ -351,6 +372,12 @@ build_up:
 	return(v);
 }
 
+/*** iamroot 161210
+
+ ***/
+
+
+/*
 /*
  * @id and @pa are from a successful allocation from idr_get_empty_slot().
  * Install the user pointer @ptr and mark the slot full.
