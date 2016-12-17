@@ -278,6 +278,10 @@ static inline int gfpflags_to_migratetype(const gfp_t gfp_flags)
 #undef GFP_MOVABLE_MASK
 #undef GFP_MOVABLE_SHIFT
 
+/*@Iamroot 161217
+ * __GFP_DIRECT_RECLAIM : 커널 메모리가 부족시 불필요한 메모리 영역을 회수하라는 keyword
+ * bool형은 C99컴파일러부터 추가됨
+ */
 static inline bool gfpflags_allow_blocking(const gfp_t gfp_flags)
 {
 	return !!(gfp_flags & __GFP_DIRECT_RECLAIM);

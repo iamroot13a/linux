@@ -42,6 +42,10 @@ ENDPROC(_find_first_zero_bit_le)
  * Purpose  : Find next 'zero' bit
  * Prototype: int find_next_zero_bit(void *addr, unsigned int maxbit, int offset)
  */
+/*@Iamroot 161217
+ * lib/idr.c의 find_next_zero_bit() 호출시 아래 루틴이 동작함(ARM little endian machine일 경우)
+ */
+
 ENTRY(_find_next_zero_bit_le)
 		teq	r1, #0
 		beq	3b
@@ -193,4 +197,10 @@ ENDPROC(_find_next_bit_be)
 		cmp	r1, r0			@ Clamp to maxbit
 		movlo	r0, r1
 		ret	lr
+
+
+
+
+
+
 

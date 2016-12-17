@@ -500,7 +500,6 @@ asmlinkage __visible void __init start_kernel(void)
 
 
 	/*@Iamroot 161203
-	 * local_irq_disable()부터 다음 시간에..
 	 * 모가향책 8장부터 시작
 	 * @Iamroot_TODO도 봐야함
 	 */
