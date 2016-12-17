@@ -36,9 +36,17 @@
 
 /* Leave the possibility of an incomplete final layer */
 #define MAX_IDR_LEVEL ((MAX_IDR_SHIFT + IDR_BITS - 1) / IDR_BITS)
+/*
+@Iamroot
+MAX_IDR_LEVEL = 4
+//#define MAX_IDR_LEVEL \
+(((sizeof(int) * 8 - 1) + (8-1) / 8)\
+(31+7)/8 = 38/8 = 4
+*/
 
 /* Number of id_layer structs to leave in free list */
 #define MAX_IDR_FREE (MAX_IDR_LEVEL * 2)
+//#define MAX_IDR_FREE 8
 
 static struct kmem_cache *idr_layer_cache;
 static DEFINE_PER_CPU(struct idr_layer *, idr_preload_head);
@@ -286,6 +294,7 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 	return id;
 }
 
+//idr_get_empty_slot(idr, start, pa, gfp_mask, NULL);
 static int idr_get_empty_slot(struct idr *idp, int starting_id,
 			      struct idr_layer **pa, gfp_t gfp_mask,
 			      struct idr *layer_idr)
@@ -447,6 +456,7 @@ EXPORT_SYMBOL(idr_preload);
  * or iteration can be performed under RCU read lock provided the user
  * destroys @ptr in RCU-safe way after removal from idr.
  */
+//idr_alloc(idr, ptr, start, end, gfp_mask & ~__GFP_DIRECT_RECLAIM);
 int idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 {
 	int max = end > 0 ? end - 1 : INT_MAX;	/* inclusive upper limit */
