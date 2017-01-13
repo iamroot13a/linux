@@ -119,6 +119,9 @@ static inline struct thread_info *current_thread_info(void)
     @Iamroot 2016/10/15***/
 	return (struct thread_info *)
 		(current_stack_pointer & ~(THREAD_SIZE - 1));
+#if 0  /* @Iamroot: 2017.01.07 */
+.long   init_thread_union + THREAD_START_SP (head-common.S)
+#endif /* @Iamroot  */
 }
 
 #define thread_saved_pc(tsk)	\

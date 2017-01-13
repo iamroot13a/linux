@@ -1697,12 +1697,18 @@ void init_cpu_online(const struct cpumask *src)
 void __init boot_cpu_init(void)
 {
 	int cpu = smp_processor_id();
+#if 0  /* @Iamroot: 2017.01.07 */
+        thread_info->cpu(현재값은 0)를 불러옴 
+#endif /* @Iamroot  */
 
 	/* Mark the boot cpu "present", "online" etc for SMP and UP case */
 	set_cpu_online(cpu, true);
 	set_cpu_active(cpu, true);
 	set_cpu_present(cpu, true);
 	set_cpu_possible(cpu, true);
+#if 0  /* @Iamroot: 2017.01.07 */
+        각 해당 비트를 세팅(현재 cpu(0)에 대해서) 
+#endif /* @Iamroot  */
 }
 
 /*

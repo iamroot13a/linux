@@ -504,6 +504,11 @@ asmlinkage __visible void __init start_kernel(void)
 	 * @Iamroot_TODO도 봐야함
 	 */
 	local_irq_disable();
+#if 0  /* @Iamroot: 2017.01.07 */
+        인터럽트 동작을 할수 없도록 설정한다.
+        cpsr의 i비트를 세팅 한다.
+        trace_hardirqs_off : debug나 trace 관련된 내용은 생략 
+#endif /* @Iamroot  */
 	early_boot_irqs_disabled = true;
 
 /*
@@ -512,6 +517,9 @@ asmlinkage __visible void __init start_kernel(void)
  */
 	boot_cpu_init();
 	page_address_init();
+#if 0  /* @Iamroot: 2017.01.07 */
+        다음주에 계속 pr_notice 볼차례
+#endif /* @Iamroot  */
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
 	mm_init_cpumask(&init_mm);

@@ -212,7 +212,14 @@ static void idr_mark_full(struct idr_layer **pa, int id)
 	while (bitmap_full(p->bitmap, IDR_SIZE)) {
 		if (!(p = pa[++l]))
 			break;
+#if 0  /* @Iamroot: 2017.01.07 */
+                sub_alloc() 에서 while시작전에 pa[l--] = NULL 작업을 했기 때문에
+                가장 하위 레이어부터 검사를 해서 차례대로 상위 레이어가 NULL인지 검사
+#endif /* @Iamroot  */
 		id = id >> IDR_BITS;
+#if 0  /* @Iamroot: 2017.01.07 */
+                해당 레이어가 찼기 때문에 다음레이어로 옮기기 위해 id를 IDR_BITS만큼 오른쪽 비트이동
+#endif /* @Iamroot  */
 		__set_bit((id & IDR_MASK), p->bitmap);
 	}
 }
@@ -407,9 +414,19 @@ static void idr_fill_slot(struct idr *idr, void *ptr, int id,
 {
 	/* update hint used for lookup, cleared from free_layer() */
 	rcu_assign_pointer(idr->hint, pa[0]);
+#if 0  /* @Iamroot: 2017.01.07 */
+        가장 마지막에 할당된 레이어(idr->hint)에 id가 할당될 마지막 레이어(pa[0])를 assign
+        radix tree의 가장 하단의 레이어
+#endif /* @Iamroot  */
 
 	rcu_assign_pointer(pa[0]->ary[id & IDR_MASK], (struct idr_layer *)ptr);
+
 	pa[0]->count++;
+#if 0  /* @Iamroot: 2017.01.07 */
+       idr_get_empty_slot()를 사용하여 얻어낸 해당 id에 ptr을 삽입
+       pa[0]의 배열에 삽입이 되었으므로 count 1 증가 
+#endif /* @Iamroot  */
+
 	idr_mark_full(pa, id);
 }
 
@@ -533,9 +550,7 @@ int idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 	if (unlikely(id > max))
 		return -ENOSPC;
 	
-	/*@Iamroot 161217
-	 * idr_fill_slot()부터 다음 시간에...
-	 */
+
 	idr_fill_slot(idr, ptr, id, pa);
 	return id;
 }

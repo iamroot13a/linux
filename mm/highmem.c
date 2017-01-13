@@ -479,6 +479,10 @@ void __init page_address_init(void)
 		INIT_LIST_HEAD(&page_address_htable[i].lh);
 		spin_lock_init(&page_address_htable[i].lock);
 	}
+#if 0  /* @Iamroot: 2017.01.07 */
+        page_address_htable 하이 메모리의 배열 
+        page_address_htable의 list head와 spin_lock 초기화
+#endif /* @Iamroot  */
 }
 
 #endif	/* defined(CONFIG_HIGHMEM) && !defined(WANT_PAGE_VIRTUAL) */
