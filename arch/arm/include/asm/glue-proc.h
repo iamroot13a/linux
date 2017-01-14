@@ -239,6 +239,9 @@
 # endif
 #endif
 
+/*@Iamroot 170114
+ * raspberry pi2에서는 CONFIG_CPU_V7이 set되어 있다
+ */
 #ifdef CONFIG_CPU_V7
 /*
  * Cortex-A9 needs a different suspend/resume function, so we need

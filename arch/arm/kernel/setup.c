@@ -241,6 +241,10 @@ static int __get_cpu_architecture(void)
 	return CPU_ARCH_ARMv7M;
 }
 #else
+/*@Iamroot 170104
+ * MIDR 비교 후 [19:16]비트가 0xf이면 mmfr0를 비교해서 cpu_arch를 구한다.
+ * raspberry pi2에서 cpu_arch는 9(CPU_ARCH_ARMv7)이다.
+ */
 static int __get_cpu_architecture(void)
 {
 	int cpu_arch;
@@ -416,6 +420,9 @@ static inline u32 __attribute_const__ bx_lr_instruction(void)
 	return __opcode_to_mem_arm(0xe12fff1e);
 }
 
+/*@Iamroot 170114
+ * aeabi : ARM Embedded-Application Binary Interface
+ */
 static void __init patch_aeabi_idiv(void)
 {
 	extern void __aeabi_uidiv(void);
@@ -423,12 +430,22 @@ static void __init patch_aeabi_idiv(void)
 	uintptr_t fn_addr;
 	unsigned int mask;
 
+	/*@Iamroot 170114
+	 * mask = HWCAP_IDIVA
+	 * !(elf_hwcap & mask) = 0이므로 return하지 않는다.
+	 */
 	mask = IS_ENABLED(CONFIG_THUMB2_KERNEL) ? HWCAP_IDIVT : HWCAP_IDIVA;
 	if (!(elf_hwcap & mask))
 		return;
 
 	pr_info("CPU: div instructions available: patching division code\n");
 
+	/*@Iamroot 170114
+	 * udiv, sdiv, "bx lr" instruction 명령어가 존재한다해도 kernel에서는 직접 만든 코드로 각각 대체한다.
+	 * 이는 성능 향상을 목적으로 함
+	 * flush_icache_range()는 기존 캐시에 저장되었던 기존 명령어들을 갱신하기 위해 flush함
+	 * 다음 주에 계속...
+	 */
 	fn_addr = ((uintptr_t)&__aeabi_uidiv) & ~1;
 	asm ("" : "+g" (fn_addr));
 	((u32 *)fn_addr)[0] = udiv_instruction();
@@ -455,17 +472,29 @@ static void __init cpuid_init_hwcaps(void)
 		return;
 
 	block = cpuid_feature_extract(CPUID_EXT_ISAR0, 24);
+	/*@Iamroot 170114
+	 * block이 0b10이라 가정한다.(ARM, THUMB instruction 지원)
+	 */
+
 	if (block >= 2)
 		elf_hwcap |= HWCAP_IDIVA;
 	if (block >= 1)
 		elf_hwcap |= HWCAP_IDIVT;
 
 	/* LPAE implies atomic ldrd/strd instructions */
+	/*@Iamroot 170114
+	 * LPAE 지원 여부를 확인한다.
+	 * 우리는 LPAE를 지원하지 않는다고 가정함
+	 */
+
 	block = cpuid_feature_extract(CPUID_EXT_MMFR0, 0);
 	if (block >= 5)
 		elf_hwcap |= HWCAP_LPAE;
 
 	/* check for supported v8 Crypto instructions */
+	/*@Iamroot 170114
+	 * cpuid_feature_extract_field(isar5, x)는 armv8일 때 설정된다.
+	 */
 	isar5 = read_cpuid_ext(CPUID_EXT_ISAR5);
 
 	block = cpuid_feature_extract_field(isar5, 4);
@@ -694,6 +723,10 @@ static void __init setup_processor(void)
 	 * types.  The linker builds this table for us from the
 	 * entries in arch/arm/mm/proc-*.S
 	 */
+	/*@Iamroot 170114
+	 * __lookup_processor_type에서 반환한 processor_type 구조체를 list에 넣는다
+	 * raspberry pi2에서는 __v7_ca7mp_proc_info 구조체가 list에 들어간다.
+	 */
 	list = lookup_processor_type(read_cpuid_id());
 	if (!list) {
 		pr_err("CPU configuration botched (ID %08x), unable to continue.\n",
@@ -703,7 +736,13 @@ static void __init setup_processor(void)
 
 	cpu_name = list->cpu_name;
 	__cpu_architecture = __get_cpu_architecture();
-
+	/*@Iamroot 170114
+	 * __cpu_architecture = 9
+	 */
+	
+	/*@Iamroot 170114
+	 * raspberry pi2에서는 MULTI_CPU가 set되어 있다.(CONFIG_CPU_V7)
+	 */
 #ifdef MULTI_CPU
 	processor = *list->proc;
 #endif
@@ -723,12 +762,19 @@ static void __init setup_processor(void)
 
 	snprintf(init_utsname()->machine, __NEW_UTS_LEN + 1, "%s%c",
 		 list->arch_name, ENDIANNESS);
+	/*@Iamroot 170114
+	 * kernel 버전과 cpu 정보, 버전과 Endian을 init_utsname에 넣는다.
+	 * ex) Linux odroid 4.2.0-rc1+ #4 SMP PREEMPT Fri Jul 10 16:45:24 KST 2015 armv7l
+	 * uts : unix timesharing system의 약자
+	 */
+
 	snprintf(elf_platform, ELF_PLATFORM_SIZE, "%s%c",
 		 list->elf_name, ENDIANNESS);
 	elf_hwcap = list->elf_hwcap;
 
 	cpuid_init_hwcaps();
 	patch_aeabi_idiv();
+
 
 #ifndef CONFIG_ARM_THUMB
 	elf_hwcap &= ~(HWCAP_THUMB | HWCAP_IDIVT);

@@ -84,6 +84,10 @@
 extern unsigned int processor_id;
 
 #ifdef CONFIG_CPU_CP15
+/*@Iamroot 170114
+ * read_cpuid()는 MIDR를 읽어들인다.
+ */
+
 #define read_cpuid(reg)							\
 	({								\
 		unsigned int __val;					\
@@ -270,6 +274,10 @@ static inline int cpu_is_pj4(void)
 #define cpu_is_pj4()	0
 #endif
 
+/*@Iamroot 170114
+ * -8부터 7까지 값만 사용하기 위해 cpuid_feature_extract_field()를 수행함
+ * 관련 commit patch : git show b8c9592b
+ */
 static inline int __attribute_const__ cpuid_feature_extract_field(u32 features,
 								  int field)
 {

@@ -517,10 +517,12 @@ asmlinkage __visible void __init start_kernel(void)
  */
 	boot_cpu_init();
 	page_address_init();
-#if 0  /* @Iamroot: 2017.01.07 */
-        다음주에 계속 pr_notice 볼차례
-#endif /* @Iamroot  */
 	pr_notice("%s", linux_banner);
+	/*@Iamroot_TODO 170114
+	 * 리눅스 커널 버전, 사용자명 등을 출력
+	 * console_init()가서 printk()에 대해 자세히 확인할 예정
+	 */
+
 	setup_arch(&command_line);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);

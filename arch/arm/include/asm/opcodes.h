@@ -144,6 +144,9 @@ extern asmlinkage unsigned int arm_check_condition(u32 opcode, u32 psr);
 )
 
 /* Operations to construct or split 32-bit Thumb instructions: */
+/*@Iamroot 170114
+ * __opcode_thumb32_compose는 first인자와 second인자를 연접하게 하는 함수다.
+ */
 #define __opcode_thumb32_first(x) (___opcode_identity16((x) >> 16))
 #define __opcode_thumb32_second(x) (___opcode_identity16(x))
 #define __opcode_thumb32_compose(first, second) (			\

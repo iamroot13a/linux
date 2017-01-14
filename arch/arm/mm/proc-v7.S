@@ -601,6 +601,7 @@ __v7_setup_stack:
 	 *		-> ALT_SMP의 instruction 수행, 
 	 *	-b) 실행platform이 UP환경이다.   
 	 *		-> ALT_SMP instr 위치에 UP용 instruction으로 교체되어 수행
+	 * v7_processor_functions : define_processor_functions에 의해 v7_processor_functions가 존재한다.
 	 */
 	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
 			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
