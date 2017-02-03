@@ -298,12 +298,26 @@ static int cpu_has_aliasing_icache(unsigned int arch)
 		asm("mcr	p15, 2, %0, c0, c0, 0 @ set CSSELR"
 		    : /* No output operands */
 		    : "r" (1));
+#if 0  /* @Iamroot: 2017.01.21 */
+1 : instruction cache
+0 : data cache
+cache level은 0으로 설정
+manual p.1555 : CSSELR
+#endif /* @Iamroot  */
 		isb();
 		asm("mrc	p15, 1, %0, c0, c0, 0 @ read CCSIDR"
 		    : "=r" (id_reg));
 		line_size = 4 << ((id_reg & 0x7) + 2);
+#if 0  /* @Iamroot: 2017.01.21 */
+                Log 2 (Number of words in cache line)) -2
+#endif /* @Iamroot  */
 		num_sets = ((id_reg >> 13) & 0x7fff) + 1;
 		aliasing_icache = (line_size * num_sets) > PAGE_SIZE;
+#if 0  /* @Iamroot: 2017.01.21 */
+                aliasing_icache 는 1로 간주 하고 진행
+                http://lists.infradead.org/pipermail/linux-arm-kernel/2015-October/382023.html
+                참고
+#endif /* @Iamroot  */
 		break;
 	case CPU_ARCH_ARMv6:
 		aliasing_icache = read_cpuid_cachetype() & (1 << 11);
@@ -319,21 +333,41 @@ static int cpu_has_aliasing_icache(unsigned int arch)
 static void __init cacheid_init(void)
 {
 	unsigned int arch = cpu_architecture();
+#if 0  /* @Iamroot: 2017.01.21 */
+        arch = 9(ARMv7)
+#endif /* @Iamroot  */
 
 	if (arch == CPU_ARCH_ARMv7M) {
 		cacheid = 0;
 	} else if (arch >= CPU_ARCH_ARMv6) {
 		unsigned int cachetype = read_cpuid_cachetype();
 		if ((cachetype & (7 << 29)) == 4 << 29) {
+#if 0  /* @Iamroot: 2017.01.21 */
+                    CTR의 format 과 비교 
+#endif /* @Iamroot  */
 			/* ARMv7 register format */
 			arch = CPU_ARCH_ARMv7;
 			cacheid = CACHEID_VIPT_NONALIASING;
+#if 0  /* @Iamroot: 2017.01.21 */
+                        virtaul index, physical tag
+                        모기향 p.225 참고 
+#endif /* @Iamroot  */
 			switch (cachetype & (3 << 14)) {
+#if 0  /* @Iamroot: 2017.01.21 */
+                    CTR의 L1IP와 비교
+#endif /* @Iamroot  */
 			case (1 << 14):
 				cacheid |= CACHEID_ASID_TAGGED;
+#if 0  /* @Iamroot: 2017.01.21 */
+                                virtual index, virtual tag
+                                ASID : address space id
+#endif /* @Iamroot  */
 				break;
 			case (3 << 14):
 				cacheid |= CACHEID_PIPT;
+#if 0  /* @Iamroot: 2017.01.21 */
+                                physical index physical tag
+#endif /* @Iamroot  */
 				break;
 			}
 		} else {
@@ -437,6 +471,10 @@ static void __init patch_aeabi_idiv(void)
 	mask = IS_ENABLED(CONFIG_THUMB2_KERNEL) ? HWCAP_IDIVT : HWCAP_IDIVA;
 	if (!(elf_hwcap & mask))
 		return;
+#if 0  /* @Iamroot: 2017.01.21 */
+        IS_ENABLED를 통하여 해당 명령어를 지원하는지 확인하여 지원하다면
+        아래 루틴을 진행한다 
+#endif /* @Iamroot  */
 
 	pr_info("CPU: div instructions available: patching division code\n");
 
@@ -444,7 +482,6 @@ static void __init patch_aeabi_idiv(void)
 	 * udiv, sdiv, "bx lr" instruction 명령어가 존재한다해도 kernel에서는 직접 만든 코드로 각각 대체한다.
 	 * 이는 성능 향상을 목적으로 함
 	 * flush_icache_range()는 기존 캐시에 저장되었던 기존 명령어들을 갱신하기 위해 flush함
-	 * 다음 주에 계속...
 	 */
 	fn_addr = ((uintptr_t)&__aeabi_uidiv) & ~1;
 	asm ("" : "+g" (fn_addr));
@@ -530,9 +567,17 @@ static void __init elf_hwcap_fixup(void)
 		return;
 	}
 
+#if 0  /* @Iamroot: 2017.01.21 */
+TLS : thread local storage
+          각각의 스레드가 같은 전역, 정적 변수에 접근하더라도
+          서로 다르게 독립적으로 사용할수 있게 한다
+#endif /* @Iamroot  */
 	/* Verify if CPUID scheme is implemented */
 	if ((id & 0x000f0000) != 0x000f0000)
 		return;
+#if 0  /* @Iamroot: 2017.01.21 */
+      MIDR에서 ARMv7 은 Architecture의 값이 F.
+#endif /* @Iamroot  */
 
 	/*
 	 * If the CPU supports LDREX/STREX and LDREXB/STREXB,
@@ -543,6 +588,12 @@ static void __init elf_hwcap_fixup(void)
 	    (cpuid_feature_extract(CPUID_EXT_ISAR3, 12) == 1 &&
 	     cpuid_feature_extract(CPUID_EXT_ISAR4, 20) >= 3))
 		elf_hwcap &= ~HWCAP_SWP;
+#if 0  /* @Iamroot: 2017.01.21 */
+      cpuid_feature_extract(CPUID_EXT_ISAR3, 12) : SynchPrim_instrs
+      cpuid_feature_extract(CPUID_EXT_ISAR4, 20) : SynchPrim_instrs_frac
+      HWCAP_SWP : 레지스터와 메모리 값을 한번에 바꿀수 있는 기능
+                  - multi core 에서는 사용하지 않음 
+#endif /* @Iamroot  */
 }
 
 /*
@@ -566,8 +617,14 @@ void notrace cpu_init(void)
 	 * boot cpu, smp_prepare_boot_cpu is called after percpu area setup.
 	 */
 	set_my_cpu_offset(per_cpu_offset(cpu));
-
+#if 0  /* @Iamroot: 2017.01.21 */
+        per_cpu의 offset을 읽어와 자신의 cpu의 offset 설정
+#endif /* @Iamroot  */
 	cpu_proc_init();
+#if 0  /* @Iamroot: 2017.01.21 */
+cpu_proc_init : {return lr}
+                다음주에 banked 체크 요망
+#endif /* @Iamroot  */
 
 	/*
 	 * Define the placement constraint for the inline asm directive below.
@@ -781,6 +838,11 @@ static void __init setup_processor(void)
 #endif
 #ifdef CONFIG_MMU
 	init_default_cache_policy(list->__cpu_mm_mmu_flags);
+#if 0  /* @Iamroot: 2017.01.21 */
+__cpu_mm_mmu_flags :
+	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
+#endif /* @Iamroot  */
 #endif
 	erratum_a15_798181_init();
 

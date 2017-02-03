@@ -138,7 +138,12 @@ void __init init_default_cache_policy(unsigned long pmd)
 	initial_pmd_value = pmd;
 
 	pmd &= PMD_SECT_TEX(1) | PMD_SECT_BUFFERABLE | PMD_SECT_CACHEABLE;
-
+#if 0  /* @Iamroot: 2017.01.21 */
+        PMD_SECT_WBWA : (PMD_SECT_TEX(1) | PMD_SECT_CACHEABLE | PMD_SECT_BUFFERABLE)
+        cache_policies[]의 각 pmd 값과 위의 pmd의 값이 일치 하는것을 for문을 이용하여 찾는다
+        현재는 WBWA (arch/arm/mm/proc-v7.S - mmu_flags) 
+        manual p.1367 참조 
+#endif /* @Iamroot  */
 	for (i = 0; i < ARRAY_SIZE(cache_policies); i++)
 		if (cache_policies[i].pmd == pmd) {
 			cachepolicy = i;

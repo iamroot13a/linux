@@ -66,6 +66,9 @@ extern void __chk_io_ptr(const volatile void __iomem *);
 #define notrace __attribute__((no_instrument_function))
 #endif
 
+#if 0  /* @Iamroot: 2017.01.21 */
+hotpatch : 재부팅 재시작 하지않고 패치할수 있는 기능
+#endif /* @Iamroot  */
 /* Intel compiler defines __GNUC__. So we will overwrite implementations
  * coming from above header files here
  */

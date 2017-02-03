@@ -84,9 +84,6 @@
 extern unsigned int processor_id;
 
 #ifdef CONFIG_CPU_CP15
-/*@Iamroot 170114
- * read_cpuid()는 MIDR를 읽어들인다.
- */
 
 #define read_cpuid(reg)							\
 	({								\
@@ -200,6 +197,9 @@ static inline unsigned int __attribute_const__ xscale_cpu_arch_version(void)
 static inline unsigned int __attribute_const__ read_cpuid_cachetype(void)
 {
 	return read_cpuid(CPUID_CACHETYPE);
+#if 0  /* @Iamroot: 2017.01.21 */
+        cache type register의 값을  읽어옴
+#endif /* @Iamroot  */
 }
 
 static inline unsigned int __attribute_const__ read_cpuid_tcmstatus(void)
