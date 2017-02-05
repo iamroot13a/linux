@@ -218,6 +218,10 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 	mdesc_best = &__mach_desc_GENERIC_DT;
 #endif
 
+	/*@Iamroot 170203
+	 * 다음 시간에...
+	 * arch/arm/kernel/setup.c의 cpu_proc_init() 주석 의미는???
+	 */
 	if (!dt_phys || !early_init_dt_verify(phys_to_virt(dt_phys)))
 		return NULL;
 

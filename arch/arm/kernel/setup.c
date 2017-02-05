@@ -144,6 +144,10 @@ struct stack {
 	u32 und[3];
 	u32 fiq[3];
 } ____cacheline_aligned;
+/*@Iamroot 170203
+ * r0, lr, spsr를 저장하기 위해 각 모드에 배열을 3개로 설정
+ */
+
 
 #ifndef CONFIG_CPU_V7M
 static struct stack stacks[NR_CPUS];
@@ -623,7 +627,7 @@ void notrace cpu_init(void)
 	cpu_proc_init();
 #if 0  /* @Iamroot: 2017.01.21 */
 cpu_proc_init : {return lr}
-                다음주에 banked 체크 요망
+                다음주에 banked 체크 요망??
 #endif /* @Iamroot  */
 
 	/*
@@ -665,6 +669,15 @@ cpu_proc_init : {return lr}
 	      "I" (offsetof(struct stack, fiq[0])),
 	      PLC (PSR_F_BIT | PSR_I_BIT | SVC_MODE)
 	    : "r14");
+	/*@Iamroot 170203
+	 * %1 : "r" (stk)
+	 * %2 : PLC (PSR_F_BIT | PSR_I_BIT | IRQ_MODE)
+	 * 요런식으로 %n에 각각 대입
+	 * 자세한 어셈블리 문법은 https://goo.gl/0S7Fb0 참고
+	 * IRQ, ABT, UND, FIQ, SVC 모드의 Stack Pointer를 설정
+	 * 마지막에 언급된 r14 레지스터는 컴파일러가 수정하지 못하게 막아놓음
+	 */
+
 #endif
 }
 
