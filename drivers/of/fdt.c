@@ -101,6 +101,9 @@ int of_fdt_is_compatible(const void *blob,
 		score++;
 		if (of_compat_cmp(cp, compat, strlen(compat)) == 0)
 			return score;
+#if 0  /* @Iamroot: 2017.02.11 */
+                of_compat_cmp == strcasecmp
+#endif /* @Iamroot  */
 		l = strlen(cp) + 1;
 		cp += l;
 		cplen -= l;
@@ -776,6 +779,11 @@ int __init of_flat_dt_is_compatible(unsigned long node, const char *compat)
 int __init of_flat_dt_match(unsigned long node, const char *const *compat)
 {
 	return of_fdt_match(initial_boot_params, node, compat);
+#if 0  /* @Iamroot: 2017.02.11 */
+        initial_boot_params = DTB 시작주소
+        node = 0;(dt_roots 의 값)
+        compat = .arch.info.init
+#endif /* @Iamroot  */
 }
 
 struct fdt_scan_status {
@@ -813,10 +821,16 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 	const void *data = NULL;
 	const void *best_data = default_match;
 	const char *const *compat;
+#if 0  /* @Iamroot: 2017.02.11 */
+        const  *const : 값과 주소 둘다 상수로 처리
+#endif /* @Iamroot  */
 	unsigned long dt_root;
 	unsigned int best_score = ~1, score = 0;
 
 	dt_root = of_get_flat_dt_root();
+#if 0  /* @Iamroot: 2017.02.11 */
+        return 0; -> dt_root = 0;
+#endif /* @Iamroot  */
 	while ((data = get_next_compat(&compat))) {
 		score = of_flat_dt_match(dt_root, compat);
 		if (score > 0 && score < best_score) {
@@ -824,6 +838,8 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 			best_score = score;
 		}
 	}
+#if 0  /* @Iamroot: 2017.02.11 */
+#endif /* @Iamroot  */
 	if (!best_data) {
 		const char *prop;
 		int size;
@@ -1166,6 +1182,9 @@ bool __init early_init_dt_verify(void *params)
 	if (!params)
 		return false;
 
+#if 0  /* @Iamroot: 2017.02.11 */
+        현재 param의 값은 device tree의 가상주소
+#endif /* @Iamroot  */
 	/* check device tree validity */
 	if (fdt_check_header(params))
 		return false;
@@ -1174,6 +1193,9 @@ bool __init early_init_dt_verify(void *params)
 	initial_boot_params = params;
 	of_fdt_crc32 = crc32_be(~0, initial_boot_params,
 				fdt_totalsize(initial_boot_params));
+#if 0  /* @Iamroot: 2017.02.11 */
+        Checksum 생성 
+#endif /* @Iamroot  */
 	return true;
 }
 

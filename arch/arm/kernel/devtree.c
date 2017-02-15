@@ -190,6 +190,7 @@ bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
 static const void * __init arch_get_next_mach(const char *const **match)
 {
 	static const struct machine_desc *mdesc = __arch_info_begin;
+        
 	const struct machine_desc *m = mdesc;
 
 	if (m >= __arch_info_end)
@@ -197,6 +198,10 @@ static const void * __init arch_get_next_mach(const char *const **match)
 
 	mdesc++;
 	*match = m->dt_compat;
+#if 0  /* @Iamroot: 2017.02.11 */
+        DT_MACHINE_START에 의해
+        코드에 저장(하드 코딩)되어 있는  compatible을 match에 저장
+#endif /* @Iamroot  */
 	return m;
 }
 
@@ -218,10 +223,6 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 	mdesc_best = &__mach_desc_GENERIC_DT;
 #endif
 
-	/*@Iamroot 170203
-	 * 다음 시간에...
-	 * arch/arm/kernel/setup.c의 cpu_proc_init() 주석 의미는???
-	 */
 	if (!dt_phys || !early_init_dt_verify(phys_to_virt(dt_phys)))
 		return NULL;
 

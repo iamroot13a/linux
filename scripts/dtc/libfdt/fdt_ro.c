@@ -324,6 +324,11 @@ const void *fdt_getprop(const void *fdt, int nodeoffset,
 			const char *name, int *lenp)
 {
 	return fdt_getprop_namelen(fdt, nodeoffset, name, strlen(name), lenp);
+#if 0  /* @Iamroot: 2017.02.11 */
+        fdt = DTB 시작주소 
+        nodeoffset : 0
+        name = "compatible"
+#endif /* @Iamroot  */
 }
 
 uint32_t fdt_get_phandle(const void *fdt, int nodeoffset)

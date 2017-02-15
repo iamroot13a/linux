@@ -58,6 +58,9 @@ struct fdt_header {
 	fdt32_t magic;			 /* magic word FDT_MAGIC */
 	fdt32_t totalsize;		 /* total size of DT block */
 	fdt32_t off_dt_struct;		 /* offset to structure */
+#if 0  /* @Iamroot: 2017.02.11 */
+        device tree 의 struct block의 시작 offset
+#endif /* @Iamroot  */
 	fdt32_t off_dt_strings;		 /* offset to strings */
 	fdt32_t off_mem_rsvmap;		 /* offset to memory reserve map */
 	fdt32_t version;		 /* format version */

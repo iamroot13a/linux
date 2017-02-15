@@ -57,12 +57,24 @@
 
 int fdt_check_header(const void *fdt)
 {
+#if 0  /* @Iamroot: 2017.02.11 */
+    fdt Magic number를 확인한다
+
+    fdt 시작시 초기 매직 값은 FDT_SW_MAGIC값으로 설정하고
+    초기화 종료후 매직값을 FDT_MAGIC 으로 다시 설정한다
+
+    즉, (fdt_magic(fdt) == FDT_SW_MAGIC)는 미완성 단계이고 fdt의 사이즈가 0이 아닐경우 
+    현재 작성된것 만이라도 사용한다는 의미
+#endif /* @Iamroot  */
 	if (fdt_magic(fdt) == FDT_MAGIC) {
 		/* Complete tree */
 		if (fdt_version(fdt) < FDT_FIRST_SUPPORTED_VERSION)
 			return -FDT_ERR_BADVERSION;
 		if (fdt_last_comp_version(fdt) > FDT_LAST_SUPPORTED_VERSION)
 			return -FDT_ERR_BADVERSION;
+#if 0  /* @Iamroot: 2017.02.11 */
+                자신이 감당할수 없는 옛날 또는 최신 버전일 경우 처리 안함
+#endif /* @Iamroot  */
 	} else if (fdt_magic(fdt) == FDT_SW_MAGIC) {
 		/* Unfinished sequential-write blob */
 		if (fdt_size_dt_struct(fdt) == 0)
@@ -77,7 +89,10 @@ int fdt_check_header(const void *fdt)
 const void *fdt_offset_ptr(const void *fdt, int offset, unsigned int len)
 {
 	unsigned absoffset = offset + fdt_off_dt_struct(fdt);
-
+#if 0  /* @Iamroot: 2017.02.11 */
+off_dt_struct의 시작주소 + offset = absoffset
+len : 4
+#endif /* @Iamroot  */
 	if ((absoffset < offset)
 	    || ((absoffset + len) < absoffset)
 	    || (absoffset + len) > fdt_totalsize(fdt))
@@ -98,10 +113,16 @@ uint32_t fdt_next_tag(const void *fdt, int startoffset, int *nextoffset)
 	int offset = startoffset;
 	const char *p;
 
+#if 0  /* @Iamroot: 2017.02.11 */
+FDT_ERR_TRUNCATED : 8
+#endif /* @Iamroot  */
 	*nextoffset = -FDT_ERR_TRUNCATED;
 	tagp = fdt_offset_ptr(fdt, offset, FDT_TAGSIZE);
 	if (!tagp)
 		return FDT_END; /* premature end */
+#if 0  /* @Iamroot: 2017.02.11 */
+        다음주에 계속
+#endif /* @Iamroot  */
 	tag = fdt32_to_cpu(*tagp);
 	offset += FDT_TAGSIZE;
 
@@ -143,6 +164,9 @@ uint32_t fdt_next_tag(const void *fdt, int startoffset, int *nextoffset)
 
 int _fdt_check_node_offset(const void *fdt, int offset)
 {
+#if 0  /* @Iamroot: 2017.02.11 */
+FDT_TAGSIZE : 32bit
+#endif /* @Iamroot  */
 	if ((offset < 0) || (offset % FDT_TAGSIZE)
 	    || (fdt_next_tag(fdt, offset, &offset) != FDT_BEGIN_NODE))
 		return -FDT_ERR_BADOFFSET;

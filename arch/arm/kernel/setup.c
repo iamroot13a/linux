@@ -93,6 +93,10 @@ EXPORT_SYMBOL(__machine_arch_type);
 unsigned int cacheid __read_mostly;
 EXPORT_SYMBOL(cacheid);
 
+#if 0  /* @Iamroot: 2017.02.11 */
+__initdata : 메모리 한쪽에 잘 모아 놨다가
+     시스템 초기화 시에 한번만 실행하고 사용이 끝나면 메모리에서 제거하는 변수
+#endif /* @Iamroot  */
 unsigned int __atags_pointer __initdata;
 
 unsigned int system_rev;
@@ -623,11 +627,11 @@ void notrace cpu_init(void)
 	set_my_cpu_offset(per_cpu_offset(cpu));
 #if 0  /* @Iamroot: 2017.01.21 */
         per_cpu의 offset을 읽어와 자신의 cpu의 offset 설정
+        banked register 를 사용
 #endif /* @Iamroot  */
 	cpu_proc_init();
 #if 0  /* @Iamroot: 2017.01.21 */
 cpu_proc_init : {return lr}
-                다음주에 banked 체크 요망??
 #endif /* @Iamroot  */
 
 	/*
@@ -1172,6 +1176,9 @@ void __init setup_arch(char **cmdline_p)
 	const struct machine_desc *mdesc;
 
 	setup_processor();
+#if 0  /* @Iamroot: 2017.02.11 */
+__atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 사용 
+#endif /* @Iamroot  */
 	mdesc = setup_machine_fdt(__atags_pointer);
 	if (!mdesc)
 		mdesc = setup_machine_tags(__atags_pointer, __machine_arch_type);

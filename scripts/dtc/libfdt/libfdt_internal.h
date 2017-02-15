@@ -70,6 +70,9 @@ int _fdt_node_end_offset(void *fdt, int nodeoffset);
 static inline const void *_fdt_offset_ptr(const void *fdt, int offset)
 {
 	return (const char *)fdt + fdt_off_dt_struct(fdt) + offset;
+#if 0  /* @Iamroot: 2017.02.11 */
+        DTB 시작주소 + dt_struct의 시작주소 + 0
+#endif /* @Iamroot  */
 }
 
 static inline void *_fdt_offset_ptr_w(void *fdt, int offset)
