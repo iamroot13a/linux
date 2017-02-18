@@ -102,6 +102,10 @@ len : 4
 		if (((offset + len) < offset)
 		    || ((offset + len) > fdt_size_dt_struct(fdt)))
 			return NULL;
+	/*@Iamroot 170218
+	 * 혹은 absoffset + len 결과값이 overflow되는 현상을 막기 위해
+	 * 두 개의 if문으로 확인함
+	 */
 
 	return _fdt_offset_ptr(fdt, offset);
 }
@@ -120,13 +124,19 @@ FDT_ERR_TRUNCATED : 8
 	tagp = fdt_offset_ptr(fdt, offset, FDT_TAGSIZE);
 	if (!tagp)
 		return FDT_END; /* premature end */
-#if 0  /* @Iamroot: 2017.02.11 */
-        다음주에 계속
-#endif /* @Iamroot  */
 	tag = fdt32_to_cpu(*tagp);
+	/*@Iamroot 170218
+	 * tagp는 big-endian주소이므로 cpu endian에 맞게 주소변환함
+	 */
+
 	offset += FDT_TAGSIZE;
 
 	*nextoffset = -FDT_ERR_BADSTRUCTURE;
+	
+	/*@Iamroot 170218
+	 * tag = FDT_BDGIN_NODE라 가정함
+	 * 
+	 */
 	switch (tag) {
 	case FDT_BEGIN_NODE:
 		/* skip name */

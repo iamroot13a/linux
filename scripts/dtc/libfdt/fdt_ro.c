@@ -268,6 +268,11 @@ const struct fdt_property *fdt_get_property_namelen(const void *fdt,
 						    const char *name,
 						    int namelen, int *lenp)
 {
+	/*@Iamroot
+	 * 다음 시간에...
+	 * 다음 주에 문C블로그 참고
+	 */
+
 	for (offset = fdt_first_property_offset(fdt, offset);
 	     (offset >= 0);
 	     (offset = fdt_next_property_offset(fdt, offset))) {

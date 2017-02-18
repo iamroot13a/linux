@@ -94,6 +94,9 @@ int of_fdt_is_compatible(const void *blob,
 	int cplen;
 	unsigned long l, score = 0;
 
+	/*@Iamroot 170218
+	 * fdt_getprop()는 dtb의 root 노드의 compatible 문자열 시작주소를 return
+	 */
 	cp = fdt_getprop(blob, node, "compatible", &cplen);
 	if (cp == NULL)
 		return 0;
@@ -102,7 +105,9 @@ int of_fdt_is_compatible(const void *blob,
 		if (of_compat_cmp(cp, compat, strlen(compat)) == 0)
 			return score;
 #if 0  /* @Iamroot: 2017.02.11 */
-                of_compat_cmp == strcasecmp
+				of_compat_cmp()는 여러개의 단어를 가진 cp에서 
+				compat와 매칭되는 단어는 몇 번째인지 찾는다.
+				score = "매칭되는 단어의 cp 순서"
 #endif /* @Iamroot  */
 		l = strlen(cp) + 1;
 		cp += l;
