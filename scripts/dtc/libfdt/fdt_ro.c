@@ -268,20 +268,20 @@ const struct fdt_property *fdt_get_property_namelen(const void *fdt,
 						    const char *name,
 						    int namelen, int *lenp)
 {
-	/*@Iamroot
-	 * 다음 시간에...
-	 * 다음 주에 문C블로그 참고
-	 */
-
 	for (offset = fdt_first_property_offset(fdt, offset);
 	     (offset >= 0);
 	     (offset = fdt_next_property_offset(fdt, offset))) {
 		const struct fdt_property *prop;
-
+	
 		if (!(prop = fdt_get_property_by_offset(fdt, offset, lenp))) {
 			offset = -FDT_ERR_INTERNAL;
 			break;
 		}
+
+	/*@Iamroot 170225
+	* fdt_get_property_by_offset()를 통해 찾아온 property의 key와 name의 일치여부를 확인한다.
+	* fdt32_to_cpu()는 big-endian인 fdt structure를 little-endian 형식으로 불러오기 위해 사용한다.
+	*/
 		if (_fdt_string_eq(fdt, fdt32_to_cpu(prop->nameoff),
 				   name, namelen))
 			return prop;

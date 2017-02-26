@@ -843,8 +843,11 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 			best_score = score;
 		}
 	}
-#if 0  /* @Iamroot: 2017.02.11 */
-#endif /* @Iamroot  */
+	/*@Iamroot 170225
+	 * 가장 적합한 machine descriptor를 찾기 위해 가장 낮은 score를 best_score로 한다.
+	 * best_score와 match되는 data를 best_data로 한다.
+	 */
+
 	if (!best_data) {
 		const char *prop;
 		int size;
@@ -870,6 +873,10 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 
 #ifdef CONFIG_BLK_DEV_INITRD
 #ifndef __early_init_dt_declare_initrd
+
+/*@Iamroot 170225
+ * start, end 값을 virtual address space로 변환한다.
+ */
 static void __early_init_dt_declare_initrd(unsigned long start,
 					   unsigned long end)
 {
@@ -891,6 +898,9 @@ static void __init early_init_dt_check_for_initrd(unsigned long node)
 
 	pr_debug("Looking for initrd properties... ");
 
+	/*@Iamroot 170225
+	 * "linux,initrd-start", "linux,initrd-end" value를 읽어들인다.
+	 */
 	prop = of_get_flat_dt_prop(node, "linux,initrd-start", &len);
 	if (!prop)
 		return;
@@ -982,7 +992,12 @@ int __init early_init_dt_scan_root(unsigned long node, const char *uname,
 
 	dt_root_size_cells = OF_ROOT_NODE_SIZE_CELLS_DEFAULT;
 	dt_root_addr_cells = OF_ROOT_NODE_ADDR_CELLS_DEFAULT;
-
+	
+	/*@Iamroot 170225
+	 * root 노드에서 "#size-cells"과 "#address-cells"인 value를 가져온 후
+	 * 해당 값들을 little-endian 형식으로 변환해 각각
+	 * dt_root_size_cells와 dt_root_addr_cells에 넣는다
+	 */
 	prop = of_get_flat_dt_prop(node, "#size-cells", NULL);
 	if (prop)
 		dt_root_size_cells = be32_to_cpup(prop);
@@ -1011,6 +1026,9 @@ u64 __init dt_mem_next_cell(int s, const __be32 **cellp)
 int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 				     int depth, void *data)
 {
+	/*@Iamroot 170225
+	 * root 노드에 "device_type"가 memory가 아닐 경우 0으로 리턴됨
+	 */
 	const char *type = of_get_flat_dt_prop(node, "device_type", NULL);
 	const __be32 *reg, *endp;
 	int l;
@@ -1026,12 +1044,18 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	} else if (strcmp(type, "memory") != 0)
 		return 0;
 
+	/*@Iamroot 170225
+	 * root 노드에 "linux,usable-memory" value가 없을 경우 memory 내 "reg" value를 읽어온다.
+	 */
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)
 		reg = of_get_flat_dt_prop(node, "reg", &l);
 	if (reg == NULL)
 		return 0;
 
+	/*@Iamroot 170225
+	 * 다음주에 계속
+	 */
 	endp = reg + (l / sizeof(__be32));
 
 	pr_debug("memory scan node %s, reg size %d,\n", uname, l);
@@ -1060,13 +1084,20 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	const char *p;
 
 	pr_debug("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
-
+	
 	if (depth != 1 || !data ||
 	    (strcmp(uname, "chosen") != 0 && strcmp(uname, "chosen@0") != 0))
 		return 0;
 
+	/*@Iamroot 170225
+	 * dtb 노드가 /chosen일 경우에만 early_init_dt_check_for_initrd()부터 수행한다.
+	 * 그렇지 않으면 0을 리턴한다.
+	 */
 	early_init_dt_check_for_initrd(node);
 
+	/*@Iamroot 170225
+	 * root 노드에 "bootargs" value를 얻어온 후, data에 복사한다.
+	 */
 	/* Retrieve command line */
 	p = of_get_flat_dt_prop(node, "bootargs", &l);
 	if (p != NULL && l > 0)
@@ -1077,6 +1108,11 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	 * managed to set the command line, unless CONFIG_CMDLINE_FORCE
 	 * is set in which case we override whatever was found earlier.
 	 */
+/*@Iamroot 170225
+ * CONFIG_CMDLINE_EXTEND가 set되면 기본 CMDLINE를 구분하기 위해 공백을 이용해 구분해 적고
+ * 그렇지 않으면서 CONFIG_CMDLINE_FORCE가 set되면 CMDLINE를 덮어넣는다.
+ * 모두 not set인 경우, 기본 CMDLINE가 없을시에 CMDLINE를 넣는다.
+ */
 #ifdef CONFIG_CMDLINE
 #if defined(CONFIG_CMDLINE_EXTEND)
 	strlcat(data, " ", COMMAND_LINE_SIZE);
