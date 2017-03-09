@@ -39,7 +39,7 @@ void *memcpy(void *__dest, __const void *__src, size_t __n)
 
 	return __dest;
 }
-
+	//memmove(rgn + 1, rgn, (type->cnt - idx) * sizeof(*rgn));
 void *memmove(void *__dest, __const void *__src, size_t count)
 {
 	unsigned char *d = __dest;

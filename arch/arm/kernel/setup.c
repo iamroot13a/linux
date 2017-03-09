@@ -1189,6 +1189,9 @@ __atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 �
 	if (mdesc->reboot_mode != REBOOT_HARD)
 		reboot_mode = mdesc->reboot_mode;
 
+#if 0  /* @Iamroot: 2017.03.04 */
+        다음주에 
+#endif /* @Iamroot  */
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code   = (unsigned long) _etext;
 	init_mm.end_data   = (unsigned long) _edata;

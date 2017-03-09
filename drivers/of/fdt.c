@@ -1053,11 +1053,15 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	if (reg == NULL)
 		return 0;
 
-	/*@Iamroot 170225
-	 * 다음주에 계속
-	 */
 	endp = reg + (l / sizeof(__be32));
-
+#if 0  /* @Iamroot: 2017.03.04 */
+        reg : 시작 주소 
+        l   : size
+        ex) reg = <0 0x80000000 0 0x40000000> 
+            -> reg 는 4byte의 값이 4개 가 있으므로 size는 4byte * 4 = 16byte가 된다
+        reg + (l / sizeof(__be32)) : 마지막 주소 //reg는 32비트 자료형이므로 32비트 크기 만큼 
+                                                   나누기 한다
+#endif /* @Iamroot  */
 	pr_debug("memory scan node %s, reg size %d,\n", uname, l);
 
 	while ((endp - reg) >= (dt_root_addr_cells + dt_root_size_cells)) {
@@ -1065,7 +1069,9 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 		base = dt_mem_next_cell(dt_root_addr_cells, &reg);
 		size = dt_mem_next_cell(dt_root_size_cells, &reg);
-
+#if 0  /* @Iamroot: 2017.03.04 */
+dt_mem_next_cell : reg에서 첫번째 파라미터(dt_root_addr_cells)만큼 읽고 리턴후  다음 주소를 reg에 삽입
+#endif /* @Iamroot  */
 		if (size == 0)
 			continue;
 		pr_debug(" - %llx ,  %llx\n", (unsigned long long)base,
@@ -1146,15 +1152,28 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 
 	if (!PAGE_ALIGNED(base)) {
 		if (size < PAGE_SIZE - (base & ~PAGE_MASK)) {
+#if 0  /* @Iamroot: 2017.03.04 */
+            ~PAGE_MASK : 0xFFF
+            PAGE_SIZE - (base & ~PAGE_MASK) 를 할 경우 Aligned 된 base의 주소와
+             현재 base 주소의 차이를 구할수 있다
+             이때 size가 위 결과 값보다 작을 경우 ALigned된 주소 이후의 메모리를 사용할수 없다
+             그러므로 return;
+#endif /* @Iamroot  */
 			pr_warn("Ignoring memory block 0x%llx - 0x%llx\n",
 				base, base + size);
 			return;
 		}
 		size -= PAGE_SIZE - (base & ~PAGE_MASK);
 		base = PAGE_ALIGN(base);
+#if 0  /* @Iamroot: 2017.03.04 */
+              base(주소를) round up하고 
+              size를 round up 이후의 크기만 사용할수 있도록 줄임 
+#endif /* @Iamroot  */
 	}
 	size &= PAGE_MASK;
-
+#if 0  /* @Iamroot: 2017.03.04 */
+        size도 ALIGNED
+#endif /* @Iamroot  */
 	if (base > MAX_MEMBLOCK_ADDR) {
 		pr_warning("Ignoring memory block 0x%llx - 0x%llx\n",
 				base, base + size);
@@ -1166,7 +1185,11 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 				((u64)MAX_MEMBLOCK_ADDR) + 1, base + size);
 		size = MAX_MEMBLOCK_ADDR - base + 1;
 	}
-
+#if 0  /* @Iamroot: 2017.03.04 */
+        32비트의 메모리주소체계에서 base의 주소가 32비트를 넘어가는지 체크
+            base + size - 1 > MAX_MEMBLOCK_ADDR 일 경우 MAX_MEMBLOCK_ADDR까지만 사용하도록 
+            size수정
+#endif /* @Iamroot  */
 	if (base + size < phys_offset) {
 		pr_warning("Ignoring memory block 0x%llx - 0x%llx\n",
 			   base, base + size);
@@ -1178,6 +1201,12 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 		size -= phys_offset - base;
 		base = phys_offset;
 	}
+#if 0  /* @Iamroot: 2017.03.04 */
+        base가 적절한 위치의 주소에 있는지 확인
+        base + size < phys_offset는 아니지만 base < phys_offset일 경우 
+        phys_offset로 Align하고 size도 위와 마찬가지로 줄임
+#endif /* @Iamroot  */
+
 	memblock_add(base, size);
 }
 
