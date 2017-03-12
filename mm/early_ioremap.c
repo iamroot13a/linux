@@ -74,6 +74,11 @@ void __init early_ioremap_setup(void)
 
 	for (i = 0; i < FIX_BTMAPS_SLOTS; i++)
 		slot_virt[i] = __fix_to_virt(FIX_BTMAP_BEGIN - NR_FIX_BTMAPS*i);
+	/*@Iamroot 170311
+	 * slot_virt[7]'s size를 FIX_BTMAP_BEGIN부터 각각 128k씩 할당한다.
+	 * (2^8) * (2^12) = 128k
+	 */
+
 }
 
 static int __init check_early_ioremap_leak(void)

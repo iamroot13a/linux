@@ -390,6 +390,9 @@ static inline pmd_t * __init fixmap_pmd(unsigned long addr)
 void __init early_fixmap_init(void)
 {
 	pmd_t *pmd;
+	/*@Iamroot 170311
+	 * pmd : page middle directory
+	 */
 
 	/*
 	 * The early fixmap range spans multiple pmds, for which
@@ -397,7 +400,11 @@ void __init early_fixmap_init(void)
 	 */
 	BUILD_BUG_ON((__fix_to_virt(__end_of_early_ioremap_region) >> PMD_SHIFT)
 		     != FIXADDR_TOP >> PMD_SHIFT);
-
+	
+	/*@Iamroot 170311
+	 * fix_pmd()는 pgd, pud, pmd, pte's offset를 가져온다.
+	 * raspberry pi2는 2-level page table이므로 pgd, pte만 사용한다.
+	 */
 	pmd = fixmap_pmd(FIXADDR_TOP);
 	pmd_populate_kernel(&init_mm, pmd, bm_pte);
 

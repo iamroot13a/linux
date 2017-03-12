@@ -1189,15 +1189,15 @@ __atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 �
 	if (mdesc->reboot_mode != REBOOT_HARD)
 		reboot_mode = mdesc->reboot_mode;
 
-#if 0  /* @Iamroot: 2017.03.04 */
-        다음주에 
-#endif /* @Iamroot  */
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code   = (unsigned long) _etext;
 	init_mm.end_data   = (unsigned long) _edata;
 	init_mm.brk	   = (unsigned long) _end;
 
 	/* populate cmd_line too for later use, preserving boot_command_line */
+	/*@Iamroot 170311
+	 * setup_machine_fdt에 설정된 boot_command_line를 cmd_line에 넣는다.
+	 */
 	strlcpy(cmd_line, boot_command_line, COMMAND_LINE_SIZE);
 	*cmdline_p = cmd_line;
 

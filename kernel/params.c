@@ -213,6 +213,7 @@ static char *next_arg(char *args, char **param, char **val)
 }
 
 /* Args looks like "foo=bar,bar2 baz=fuz wiz". */
+//parse_args("early options", cmdline, NULL, 0, 0, 0, NULL, do_early_param);
 char *parse_args(const char *doing,
 		 char *args,
 		 const struct kernel_param *params,
@@ -240,8 +241,19 @@ char *parse_args(const char *doing,
 		if (!val && strcmp(param, "--") == 0)
 			return err ?: args;
 		irq_was_disabled = irqs_disabled();
+	/*@Iamroot 170311
+	 * CPSR를 읽어온 후, irq가 disable되었는지 check한다.
+	 */
+
 		ret = parse_one(param, val, doing, params, num,
 				min_level, max_level, arg, unknown);
+	/*@Iamroot 170311
+	 * ret는 parse_one()에서 num 인자가 0이므로 0이다.
+	 */
+
+	/*@Iamroot 170311
+	 * 다음 시간에...
+	 */
 		if (irq_was_disabled && !irqs_disabled())
 			pr_warn("%s: option '%s' enabled irq's!\n",
 				doing, param);

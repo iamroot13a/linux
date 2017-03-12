@@ -419,7 +419,11 @@ static int __init do_early_param(char *param, char *val,
 		    (strcmp(param, "console") == 0 &&
 		     strcmp(p->str, "earlycon") == 0)
 		) {
-			if (p->setup_func(val) != 0)
+
+	/*@Iamroot 170311
+	 * val를 obs_kernel_param->setup_func에 넣는다.
+	 */
+		if (p->setup_func(val) != 0)
 				pr_warn("Malformed early option '%s'\n", param);
 		}
 	}

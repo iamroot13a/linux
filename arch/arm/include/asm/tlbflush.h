@@ -316,6 +316,8 @@ extern struct cpu_tlb_fns cpu_tlb;
 			    : "cc");					\
 	} while (0)
 
+/*tlb_op(TLB_DCLEAN, "c7, c10, 1	@ flush_pmd", pmd);
+  tlb_l2_op(TLB_L2CLEAN_FR, "c15, c9, 1  @ L2 flush_pmd", pmd);*/
 #define tlb_op(f, regs, arg)	__tlb_op(f, "p15, 0, %0, " regs, arg)
 #define tlb_l2_op(f, regs, arg)	__tlb_op(f, "p15, 1, %0, " regs, arg)
 
