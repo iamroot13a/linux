@@ -128,6 +128,10 @@ static inline void pte_free(struct mm_struct *mm, pgtable_t pte)
 	__free_page(pte);
 }
 
+/*@Iamroot 170311
+ * __pmd_populate()를 통해 FIXADDR_TOP에 해당하는 pgd entry에 pte주소를 넣는다
+ * 이후, tlb를 flush한다.(flush_pmd_entry()는 생략)
+ */
 static inline void __pmd_populate(pmd_t *pmdp, phys_addr_t pte,
 				  pmdval_t prot)
 {

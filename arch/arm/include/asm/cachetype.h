@@ -54,6 +54,9 @@ static inline unsigned int __attribute__((pure)) cacheid_is(unsigned int mask)
 {
 	return (__CACHEID_ALWAYS & mask) |
 	       (~__CACHEID_NEVER & __CACHEID_ARCH_MIN & mask & cacheid);
+#if 0  /* @Iamroot: 2017.01.21 */
+                111110 & 111010 & 100000 & 000010  : 000000
+#endif /* @Iamroot  */
 }
 
 #endif

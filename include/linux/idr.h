@@ -50,6 +50,7 @@ struct idr {
 };
 #if 0  /* @Iamroot: 2016.11.26 */
         rcu : read copy update
+        hint : 가장 마지막으로 할당된 layer
 #endif /* @Iamroot  */
 
 #define IDR_INIT(name)							\
@@ -101,6 +102,10 @@ bool idr_is_empty(struct idr *idp);
 static inline void idr_preload_end(void)
 {
 	preempt_enable();
+#if 0  /* @Iamroot_TODO: 2017.01.07 */
+        cpu 선점이 가능하도록 설정
+        schedule때문에 현재는 pass 
+#endif /* @Iamroot  */
 }
 
 /**

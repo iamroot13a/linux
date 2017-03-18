@@ -36,9 +36,17 @@
 
 /* Leave the possibility of an incomplete final layer */
 #define MAX_IDR_LEVEL ((MAX_IDR_SHIFT + IDR_BITS - 1) / IDR_BITS)
+/*
+@Iamroot
+MAX_IDR_LEVEL = 4
+//#define MAX_IDR_LEVEL \
+(((sizeof(int) * 8 - 1) + (8-1) / 8)\
+(31+7)/8 = 38/8 = 4
+*/
 
 /* Number of id_layer structs to leave in free list */
 #define MAX_IDR_FREE (MAX_IDR_LEVEL * 2)
+//#define MAX_IDR_FREE 8
 
 static struct kmem_cache *idr_layer_cache;
 static DEFINE_PER_CPU(struct idr_layer *, idr_preload_head);
@@ -46,9 +54,17 @@ static DEFINE_PER_CPU(int, idr_preload_cnt);
 static DEFINE_SPINLOCK(simple_ida_lock);
 
 /* the maximum ID which can be allocated given idr->layers */
+/*@Iamroot 161217
+ * idr_max()는 idr_layer에 따라 달라진다.
+ * layers가 1일 때 255가 반환된다.
+ * 32비트 machine에서는 idr_layer는 최대 4개까지 들어갈 수 있다.(min_t()에 의해서 제한됨)
+ */
 static int idr_max(int layers)
 {
 	int bits = min_t(int, layers * IDR_BITS, MAX_IDR_SHIFT);
+	/*@Iamroot 161217
+	 * min_t()는 두번째 파라미터와 세번째 파라미터를 비교해 작은 값을 반환함
+	 */
 
 	return (1 << bits) - 1;
 }
@@ -91,11 +107,19 @@ static struct idr_layer *get_from_free_list(struct idr *idp)
  * interface - idr_pre_get() and idr_get_new*() - and will be removed
  * together with per-pool preload buffer.
  */
+/*@Iamroot 161217
+ * idr_layer_alloc는 사용할 idr_layer를 할당/반환하는 함수
+ */
+
 static struct idr_layer *idr_layer_alloc(gfp_t gfp_mask, struct idr *layer_idr)
 {
 	struct idr_layer *new;
 
 	/* this is the old path, bypass to get_from_free_list() */
+	/*@Iamroot 161217
+	 * preload했으므로 layer_idr = NULL이다.
+	 */
+
 	if (layer_idr)
 		return get_from_free_list(layer_idr);
 
@@ -114,6 +138,10 @@ static struct idr_layer *idr_layer_alloc(gfp_t gfp_mask, struct idr *layer_idr)
 	 * Try to fetch one from the per-cpu preload buffer if in process
 	 * context.  See idr_preload() for details.
 	 */
+	/*@Iamroot 161217
+	 * idr_preload()에서 만들었던 8개의 idr_layer 중 하나를 가져옮
+	 */
+
 	if (!in_interrupt()) {
 		preempt_disable();
 		new = __this_cpu_read(idr_preload_head);
@@ -184,7 +212,14 @@ static void idr_mark_full(struct idr_layer **pa, int id)
 	while (bitmap_full(p->bitmap, IDR_SIZE)) {
 		if (!(p = pa[++l]))
 			break;
+#if 0  /* @Iamroot: 2017.01.07 */
+                sub_alloc() 에서 while시작전에 pa[l--] = NULL 작업을 했기 때문에
+                가장 하위 레이어부터 검사를 해서 차례대로 상위 레이어가 NULL인지 검사
+#endif /* @Iamroot  */
 		id = id >> IDR_BITS;
+#if 0  /* @Iamroot: 2017.01.07 */
+                해당 레이어가 찼기 때문에 다음레이어로 옮기기 위해 id를 IDR_BITS만큼 오른쪽 비트이동
+#endif /* @Iamroot  */
 		__set_bit((id & IDR_MASK), p->bitmap);
 	}
 }
@@ -238,6 +273,11 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 		n = (id >> (IDR_BITS*l)) & IDR_MASK; /*** iamroot 161210, IDR_BITS : 8, IDR_SIZE : (1 << IDR_BITS)
 		                                                          IDR_MASK : ((1 << IDR_BITS)-1) **/									  **/
 		m = find_next_zero_bit(p->bitmap, IDR_SIZE, n);
+		/*@Iamroot 161217
+		 * find_next_zero_bit(p, sz, off) : 메모리 p의 off번째 비트로부터 첫번째로 찾은 0인 비트값을 반환함
+		 * raspberry pi2는 arch/arm/lib/findbit.S에서 _find_next_zero_bit_le 루틴으로 간다.
+		 */
+
 		if (m == IDR_SIZE) {
 			/* no space available go back to previous layer. */
 			l++;
@@ -289,6 +329,7 @@ static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa,
 	return id; 
 }
 
+//idr_get_empty_slot(idr, start, pa, gfp_mask, NULL);
 static int idr_get_empty_slot(struct idr *idp, int starting_id,
 			      struct idr_layer **pa, gfp_t gfp_mask,
 			      struct idr *layer_idr)
@@ -298,9 +339,14 @@ static int idr_get_empty_slot(struct idr *idp, int starting_id,
 	unsigned long flags;
 
 	id = starting_id;
+
 build_up:
 	p = idp->top;
 	layers = idp->layers;
+	/*@Iamroot 161217
+	 * 만약 top이 없는 경우 하위 idr_layer를 생성
+	 */
+
 	if (unlikely(!p)) {
 		if (!(p = idr_layer_alloc(gfp_mask, layer_idr)))
 			return -ENOMEM;
@@ -310,6 +356,10 @@ build_up:
 	/*
 	 * Add a new layer to the top of the tree if the requested
 	 * id is larger than the currently allocated space.
+	 */
+	/*@Iamroot 161217
+	 * 현재 idr에서 수용가능한 id값을 초과하면 layer 추가
+	 * layer가 위로 커진다
 	 */
 	while (id > idr_max(layers)) {
 		layers++;
@@ -322,6 +372,10 @@ build_up:
 			WARN_ON_ONCE(p->prefix);
 			continue;
 		}
+
+		/*@Iamroot 161217
+		 * layer 생성 실패시 원상복귀한다.
+		 */
 		if (!(new = idr_layer_alloc(gfp_mask, layer_idr))) {
 			/*
 			 * The allocation failed.  If we built part of
@@ -387,9 +441,19 @@ static void idr_fill_slot(struct idr *idr, void *ptr, int id,
 {
 	/* update hint used for lookup, cleared from free_layer() */
 	rcu_assign_pointer(idr->hint, pa[0]);
+#if 0  /* @Iamroot: 2017.01.07 */
+        가장 마지막에 할당된 레이어(idr->hint)에 id가 할당될 마지막 레이어(pa[0])를 assign
+        radix tree의 가장 하단의 레이어
+#endif /* @Iamroot  */
 
 	rcu_assign_pointer(pa[0]->ary[id & IDR_MASK], (struct idr_layer *)ptr);
+
 	pa[0]->count++;
+#if 0  /* @Iamroot: 2017.01.07 */
+       idr_get_empty_slot()를 사용하여 얻어낸 해당 id에 ptr을 삽입
+       pa[0]의 배열에 삽입이 되었으므로 count 1 증가 
+#endif /* @Iamroot  */
+
 	idr_mark_full(pa, id);
 }
 
@@ -419,6 +483,14 @@ static void idr_fill_slot(struct idr *idr, void *ptr, int id,
  *	if (id < 0)
  *		error;
  */
+
+/*@Iamroot 161217
+ * idr_preload는 slub할당자에서 할당가능할 시 preload하는 함수
+ * slub할당자에서 메모리 부족 등의 이유로 할당 실패시 preload하지 않음
+ * preload는 할당받은 idr_layer를 idr_preload_head에 추가한다.
+ * P.S : EXPORT_SYMBOL로 선언되었기 때문에 global 변수처럼 사용가능
+ */
+
 void idr_preload(gfp_t gfp_mask)
 {
 	/*
@@ -437,6 +509,7 @@ void idr_preload(gfp_t gfp_mask)
 	 * treat failures from idr_alloc() as if idr_alloc() were called
 	 * with @gfp_mask which should be enough.
 	 */
+
 	while (__this_cpu_read(idr_preload_cnt) < MAX_IDR_FREE) {
 		struct idr_layer *new;
 
@@ -474,9 +547,14 @@ EXPORT_SYMBOL(idr_preload);
  * or iteration can be performed under RCU read lock provided the user
  * destroys @ptr in RCU-safe way after removal from idr.
  */
+//idr_alloc(idr, ptr, start, end, gfp_mask & ~__GFP_DIRECT_RECLAIM);
 int idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 {
 	int max = end > 0 ? end - 1 : INT_MAX;	/* inclusive upper limit */
+	/*@Iamroot 161217
+	 * INT_MAX : int형 숫자에서 최대로 들어갈 수 있는 크기 지정
+	 */
+
 	struct idr_layer *pa[MAX_IDR_LEVEL + 1];
 	int id;
 
@@ -487,6 +565,10 @@ int idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 		return -EINVAL;
 	if (unlikely(max < start))
 		return -ENOSPC;
+	/*@Iamroot 161217
+	 * 보통 max : 1, start : 2가 들어감
+	 * ENOSPC : No space left on device
+	 */
 
 	/* allocate id */
 	id = idr_get_empty_slot(idr, start, pa, gfp_mask, NULL);
@@ -494,6 +576,7 @@ int idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 		return id;
 	if (unlikely(id > max))
 		return -ENOSPC;
+	
 
 	idr_fill_slot(idr, ptr, id, pa);
 	return id;

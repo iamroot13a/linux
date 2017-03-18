@@ -84,6 +84,7 @@
 extern unsigned int processor_id;
 
 #ifdef CONFIG_CPU_CP15
+
 #define read_cpuid(reg)							\
 	({								\
 		unsigned int __val;					\
@@ -196,6 +197,9 @@ static inline unsigned int __attribute_const__ xscale_cpu_arch_version(void)
 static inline unsigned int __attribute_const__ read_cpuid_cachetype(void)
 {
 	return read_cpuid(CPUID_CACHETYPE);
+#if 0  /* @Iamroot: 2017.01.21 */
+        cache type register의 값을  읽어옴
+#endif /* @Iamroot  */
 }
 
 static inline unsigned int __attribute_const__ read_cpuid_tcmstatus(void)
@@ -270,6 +274,10 @@ static inline int cpu_is_pj4(void)
 #define cpu_is_pj4()	0
 #endif
 
+/*@Iamroot 170114
+ * -8부터 7까지 값만 사용하기 위해 cpuid_feature_extract_field()를 수행함
+ * 관련 commit patch : git show b8c9592b
+ */
 static inline int __attribute_const__ cpuid_feature_extract_field(u32 features,
 								  int field)
 {

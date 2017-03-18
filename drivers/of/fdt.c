@@ -94,6 +94,9 @@ int of_fdt_is_compatible(const void *blob,
 	int cplen;
 	unsigned long l, score = 0;
 
+	/*@Iamroot 170218
+	 * fdt_getprop()는 dtb의 root 노드의 compatible 문자열 시작주소를 return
+	 */
 	cp = fdt_getprop(blob, node, "compatible", &cplen);
 	if (cp == NULL)
 		return 0;
@@ -101,6 +104,11 @@ int of_fdt_is_compatible(const void *blob,
 		score++;
 		if (of_compat_cmp(cp, compat, strlen(compat)) == 0)
 			return score;
+#if 0  /* @Iamroot: 2017.02.11 */
+				of_compat_cmp()는 여러개의 단어를 가진 cp에서 
+				compat와 매칭되는 단어는 몇 번째인지 찾는다.
+				score = "매칭되는 단어의 cp 순서"
+#endif /* @Iamroot  */
 		l = strlen(cp) + 1;
 		cp += l;
 		cplen -= l;
@@ -776,6 +784,11 @@ int __init of_flat_dt_is_compatible(unsigned long node, const char *compat)
 int __init of_flat_dt_match(unsigned long node, const char *const *compat)
 {
 	return of_fdt_match(initial_boot_params, node, compat);
+#if 0  /* @Iamroot: 2017.02.11 */
+        initial_boot_params = DTB 시작주소
+        node = 0;(dt_roots 의 값)
+        compat = .arch.info.init
+#endif /* @Iamroot  */
 }
 
 struct fdt_scan_status {
@@ -813,10 +826,16 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 	const void *data = NULL;
 	const void *best_data = default_match;
 	const char *const *compat;
+#if 0  /* @Iamroot: 2017.02.11 */
+        const  *const : 값과 주소 둘다 상수로 처리
+#endif /* @Iamroot  */
 	unsigned long dt_root;
 	unsigned int best_score = ~1, score = 0;
 
 	dt_root = of_get_flat_dt_root();
+#if 0  /* @Iamroot: 2017.02.11 */
+        return 0; -> dt_root = 0;
+#endif /* @Iamroot  */
 	while ((data = get_next_compat(&compat))) {
 		score = of_flat_dt_match(dt_root, compat);
 		if (score > 0 && score < best_score) {
@@ -824,6 +843,11 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 			best_score = score;
 		}
 	}
+	/*@Iamroot 170225
+	 * 가장 적합한 machine descriptor를 찾기 위해 가장 낮은 score를 best_score로 한다.
+	 * best_score와 match되는 data를 best_data로 한다.
+	 */
+
 	if (!best_data) {
 		const char *prop;
 		int size;
@@ -849,6 +873,10 @@ const void * __init of_flat_dt_match_machine(const void *default_match,
 
 #ifdef CONFIG_BLK_DEV_INITRD
 #ifndef __early_init_dt_declare_initrd
+
+/*@Iamroot 170225
+ * start, end 값을 virtual address space로 변환한다.
+ */
 static void __early_init_dt_declare_initrd(unsigned long start,
 					   unsigned long end)
 {
@@ -870,6 +898,9 @@ static void __init early_init_dt_check_for_initrd(unsigned long node)
 
 	pr_debug("Looking for initrd properties... ");
 
+	/*@Iamroot 170225
+	 * "linux,initrd-start", "linux,initrd-end" value를 읽어들인다.
+	 */
 	prop = of_get_flat_dt_prop(node, "linux,initrd-start", &len);
 	if (!prop)
 		return;
@@ -961,7 +992,12 @@ int __init early_init_dt_scan_root(unsigned long node, const char *uname,
 
 	dt_root_size_cells = OF_ROOT_NODE_SIZE_CELLS_DEFAULT;
 	dt_root_addr_cells = OF_ROOT_NODE_ADDR_CELLS_DEFAULT;
-
+	
+	/*@Iamroot 170225
+	 * root 노드에서 "#size-cells"과 "#address-cells"인 value를 가져온 후
+	 * 해당 값들을 little-endian 형식으로 변환해 각각
+	 * dt_root_size_cells와 dt_root_addr_cells에 넣는다
+	 */
 	prop = of_get_flat_dt_prop(node, "#size-cells", NULL);
 	if (prop)
 		dt_root_size_cells = be32_to_cpup(prop);
@@ -990,6 +1026,9 @@ u64 __init dt_mem_next_cell(int s, const __be32 **cellp)
 int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 				     int depth, void *data)
 {
+	/*@Iamroot 170225
+	 * root 노드에 "device_type"가 memory가 아닐 경우 0으로 리턴됨
+	 */
 	const char *type = of_get_flat_dt_prop(node, "device_type", NULL);
 	const __be32 *reg, *endp;
 	int l;
@@ -1005,6 +1044,9 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	} else if (strcmp(type, "memory") != 0)
 		return 0;
 
+	/*@Iamroot 170225
+	 * root 노드에 "linux,usable-memory" value가 없을 경우 memory 내 "reg" value를 읽어온다.
+	 */
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)
 		reg = of_get_flat_dt_prop(node, "reg", &l);
@@ -1012,7 +1054,14 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 		return 0;
 
 	endp = reg + (l / sizeof(__be32));
-
+#if 0  /* @Iamroot: 2017.03.04 */
+        reg : 시작 주소 
+        l   : size
+        ex) reg = <0 0x80000000 0 0x40000000> 
+            -> reg 는 4byte의 값이 4개 가 있으므로 size는 4byte * 4 = 16byte가 된다
+        reg + (l / sizeof(__be32)) : 마지막 주소 //reg는 32비트 자료형이므로 32비트 크기 만큼 
+                                                   나누기 한다
+#endif /* @Iamroot  */
 	pr_debug("memory scan node %s, reg size %d,\n", uname, l);
 
 	while ((endp - reg) >= (dt_root_addr_cells + dt_root_size_cells)) {
@@ -1020,7 +1069,9 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 		base = dt_mem_next_cell(dt_root_addr_cells, &reg);
 		size = dt_mem_next_cell(dt_root_size_cells, &reg);
-
+#if 0  /* @Iamroot: 2017.03.04 */
+dt_mem_next_cell : reg에서 첫번째 파라미터(dt_root_addr_cells)만큼 읽고 리턴후  다음 주소를 reg에 삽입
+#endif /* @Iamroot  */
 		if (size == 0)
 			continue;
 		pr_debug(" - %llx ,  %llx\n", (unsigned long long)base,
@@ -1039,13 +1090,20 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	const char *p;
 
 	pr_debug("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
-
+	
 	if (depth != 1 || !data ||
 	    (strcmp(uname, "chosen") != 0 && strcmp(uname, "chosen@0") != 0))
 		return 0;
 
+	/*@Iamroot 170225
+	 * dtb 노드가 /chosen일 경우에만 early_init_dt_check_for_initrd()부터 수행한다.
+	 * 그렇지 않으면 0을 리턴한다.
+	 */
 	early_init_dt_check_for_initrd(node);
 
+	/*@Iamroot 170225
+	 * root 노드에 "bootargs" value를 얻어온 후, data에 복사한다.
+	 */
 	/* Retrieve command line */
 	p = of_get_flat_dt_prop(node, "bootargs", &l);
 	if (p != NULL && l > 0)
@@ -1056,6 +1114,11 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	 * managed to set the command line, unless CONFIG_CMDLINE_FORCE
 	 * is set in which case we override whatever was found earlier.
 	 */
+/*@Iamroot 170225
+ * CONFIG_CMDLINE_EXTEND가 set되면 기본 CMDLINE를 구분하기 위해 공백을 이용해 구분해 적고
+ * 그렇지 않으면서 CONFIG_CMDLINE_FORCE가 set되면 CMDLINE를 덮어넣는다.
+ * 모두 not set인 경우, 기본 CMDLINE가 없을시에 CMDLINE를 넣는다.
+ */
 #ifdef CONFIG_CMDLINE
 #if defined(CONFIG_CMDLINE_EXTEND)
 	strlcat(data, " ", COMMAND_LINE_SIZE);
@@ -1089,15 +1152,28 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 
 	if (!PAGE_ALIGNED(base)) {
 		if (size < PAGE_SIZE - (base & ~PAGE_MASK)) {
+#if 0  /* @Iamroot: 2017.03.04 */
+            ~PAGE_MASK : 0xFFF
+            PAGE_SIZE - (base & ~PAGE_MASK) 를 할 경우 Aligned 된 base의 주소와
+             현재 base 주소의 차이를 구할수 있다
+             이때 size가 위 결과 값보다 작을 경우 ALigned된 주소 이후의 메모리를 사용할수 없다
+             그러므로 return;
+#endif /* @Iamroot  */
 			pr_warn("Ignoring memory block 0x%llx - 0x%llx\n",
 				base, base + size);
 			return;
 		}
 		size -= PAGE_SIZE - (base & ~PAGE_MASK);
 		base = PAGE_ALIGN(base);
+#if 0  /* @Iamroot: 2017.03.04 */
+              base(주소를) round up하고 
+              size를 round up 이후의 크기만 사용할수 있도록 줄임 
+#endif /* @Iamroot  */
 	}
 	size &= PAGE_MASK;
-
+#if 0  /* @Iamroot: 2017.03.04 */
+        size도 ALIGNED
+#endif /* @Iamroot  */
 	if (base > MAX_MEMBLOCK_ADDR) {
 		pr_warning("Ignoring memory block 0x%llx - 0x%llx\n",
 				base, base + size);
@@ -1109,7 +1185,11 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 				((u64)MAX_MEMBLOCK_ADDR) + 1, base + size);
 		size = MAX_MEMBLOCK_ADDR - base + 1;
 	}
-
+#if 0  /* @Iamroot: 2017.03.04 */
+        32비트의 메모리주소체계에서 base의 주소가 32비트를 넘어가는지 체크
+            base + size - 1 > MAX_MEMBLOCK_ADDR 일 경우 MAX_MEMBLOCK_ADDR까지만 사용하도록 
+            size수정
+#endif /* @Iamroot  */
 	if (base + size < phys_offset) {
 		pr_warning("Ignoring memory block 0x%llx - 0x%llx\n",
 			   base, base + size);
@@ -1121,6 +1201,12 @@ void __init __weak early_init_dt_add_memory_arch(u64 base, u64 size)
 		size -= phys_offset - base;
 		base = phys_offset;
 	}
+#if 0  /* @Iamroot: 2017.03.04 */
+        base가 적절한 위치의 주소에 있는지 확인
+        base + size < phys_offset는 아니지만 base < phys_offset일 경우 
+        phys_offset로 Align하고 size도 위와 마찬가지로 줄임
+#endif /* @Iamroot  */
+
 	memblock_add(base, size);
 }
 
@@ -1166,6 +1252,9 @@ bool __init early_init_dt_verify(void *params)
 	if (!params)
 		return false;
 
+#if 0  /* @Iamroot: 2017.02.11 */
+        현재 param의 값은 device tree의 가상주소
+#endif /* @Iamroot  */
 	/* check device tree validity */
 	if (fdt_check_header(params))
 		return false;
@@ -1174,6 +1263,9 @@ bool __init early_init_dt_verify(void *params)
 	initial_boot_params = params;
 	of_fdt_crc32 = crc32_be(~0, initial_boot_params,
 				fdt_totalsize(initial_boot_params));
+#if 0  /* @Iamroot: 2017.02.11 */
+        Checksum 생성 
+#endif /* @Iamroot  */
 	return true;
 }
 

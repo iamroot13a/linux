@@ -80,6 +80,9 @@ memblock_type_name(struct memblock_type *type)
 static inline phys_addr_t memblock_cap_size(phys_addr_t base, phys_addr_t *size)
 {
 	return *size = min(*size, (phys_addr_t)ULLONG_MAX - base);
+#if 0  /* @Iamroot: 2017.03.04 */
+        size + base가 32비트의 최대값을 넘기지 않도록 조정
+#endif /* @Iamroot  */
 }
 
 /*
@@ -470,6 +473,9 @@ static void __init_memblock memblock_merge_regions(struct memblock_type *type)
 		memmove(next, next + 1, (type->cnt - (i + 2)) * sizeof(*next));
 		type->cnt--;
 	}
+#if 0  /* @Iamroot: 2017.03.04 */
+        연속적으로 되어있는 memblock은 merge한다 
+#endif /* @Iamroot  */
 }
 
 /**
@@ -484,6 +490,10 @@ static void __init_memblock memblock_merge_regions(struct memblock_type *type)
  * Insert new memblock region [@base,@base+@size) into @type at @idx.
  * @type must already have extra room to accomodate the new region.
  */
+#if 0  /* @Iamroot: 2017.03.04 */
+	    memblock_insert_region(type, idx, base, end - base,
+					       nid, flags);
+#endif /* @Iamroot  */
 static void __init_memblock memblock_insert_region(struct memblock_type *type,
 						   int idx, phys_addr_t base,
 						   phys_addr_t size,
@@ -493,6 +503,10 @@ static void __init_memblock memblock_insert_region(struct memblock_type *type,
 
 	BUG_ON(type->cnt >= type->max);
 	memmove(rgn + 1, rgn, (type->cnt - idx) * sizeof(*rgn));
+#if 0  /* @Iamroot: 2017.03.04 */
+        새로운 rgn을 중간에 넣기위해 뒤의 값들을 memmove를 통해 한칸씩 이동시키고
+        새 rgn으로 집어넣음 
+#endif /* @Iamroot  */
 	rgn->base = base;
 	rgn->size = size;
 	rgn->flags = flags;
@@ -540,6 +554,9 @@ int __init_memblock memblock_add_range(struct memblock_type *type,
 		type->total_size = size;
 		return 0;
 	}
+#if 0  /* @Iamroot: 2017.03.04 */
+        memblock에 아무것도 등록이 안되어 있을경우 위 if문 분기 타고 끝
+#endif /* @Iamroot  */
 repeat:
 	/*
 	 * The following is executed twice.  Once with %false @insert and
@@ -557,6 +574,10 @@ repeat:
 			break;
 		if (rend <= base)
 			continue;
+
+#if 0  /* @Iamroot: 2017.03.04 */
+                2분기문을 통과하는 rgn은 기존 rgn과 구역이 겹치는 rgn
+#endif /* @Iamroot  */
 		/*
 		 * @rgn overlaps.  If it separates the lower part of new
 		 * area, insert that portion.

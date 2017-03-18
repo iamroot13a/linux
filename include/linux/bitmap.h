@@ -187,6 +187,14 @@ extern int bitmap_print_to_pagebuf(bool list, char *buf,
 
 #define small_const_nbits(nbits) \
 	(__builtin_constant_p(nbits) && (nbits) <= BITS_PER_LONG)
+#if 0  /* @Iamroot: 2017.01.07 */
+__builtin_constant_p : nbits가 상수일경우 1을 리턴하고 변수일경우 0을 리턴한다
+IDR_SIZE이므로 상수 
+
+  bitmap_full()이 inline함수이기 때문에 builtin_constant_p를 사용할수 있음
+
+  IDR_SIZE > BITS_PER_LONG
+#endif /* @Iamroot  */
 
 static inline void bitmap_zero(unsigned long *dst, unsigned int nbits)
 {
@@ -303,6 +311,9 @@ static inline int bitmap_full(const unsigned long *src, unsigned int nbits)
 		return ! (~(*src) & BITMAP_LAST_WORD_MASK(nbits));
 
 	return find_first_zero_bit(src, nbits) == nbits;
+#if 0  /* @Iamroot: 2017.01.07 */
+        src에 nbits 만큼 0이 없으면 find_first_zero_bit의 리턴값은 nbits가 된다
+#endif /* @Iamroot  */
 }
 
 static __always_inline int bitmap_weight(const unsigned long *src, unsigned int nbits)

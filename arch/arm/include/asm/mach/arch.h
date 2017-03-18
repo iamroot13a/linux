@@ -91,6 +91,10 @@ static const struct machine_desc __mach_desc_##_type	\
 #define MACHINE_END				\
 };
 
+/*@Iamroot 170218
+ * 컴파일 시 DT_MACHINE_START매크로를 통해 .arch.info.init section에 매핑됨
+ * 부팅시 DT_MACHINE_START를 통해 device tree 최상위 compat를 가져올 수 있음
+ */
 #define DT_MACHINE_START(_name, _namestr)		\
 static const struct machine_desc __mach_desc_##_name	\
  __used							\

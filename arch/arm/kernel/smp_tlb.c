@@ -94,6 +94,10 @@ void erratum_a15_798181_init(void)
 
 	/* Brahma-B15 r0p0..r0p2 affected
 	 * Cortex-A15 r0p0..r3p2 w/o ECO fix affected */
+#if 0  /* @Iamroot: 2017.01.21 */
+        Brahma-B15, Cortex-A15 와 관련이 없기에 pass
+        r0p0 : product revision
+#endif /* @Iamroot  */
 	if ((midr & 0xff0ffff0) == 0x420f00f0 && midr <= 0x420f00f2)
 		erratum_a15_798181_handler = erratum_a15_798181_broadcast;
 	else if ((midr & 0xff0ffff0) == 0x410fc0f0 && midr <= 0x413fc0f2 &&

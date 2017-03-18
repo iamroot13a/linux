@@ -93,6 +93,10 @@ EXPORT_SYMBOL(__machine_arch_type);
 unsigned int cacheid __read_mostly;
 EXPORT_SYMBOL(cacheid);
 
+#if 0  /* @Iamroot: 2017.02.11 */
+__initdata : 메모리 한쪽에 잘 모아 놨다가
+     시스템 초기화 시에 한번만 실행하고 사용이 끝나면 메모리에서 제거하는 변수
+#endif /* @Iamroot  */
 unsigned int __atags_pointer __initdata;
 
 unsigned int system_rev;
@@ -144,6 +148,10 @@ struct stack {
 	u32 und[3];
 	u32 fiq[3];
 } ____cacheline_aligned;
+/*@Iamroot 170203
+ * r0, lr, spsr를 저장하기 위해 각 모드에 배열을 3개로 설정
+ */
+
 
 #ifndef CONFIG_CPU_V7M
 static struct stack stacks[NR_CPUS];
@@ -241,6 +249,10 @@ static int __get_cpu_architecture(void)
 	return CPU_ARCH_ARMv7M;
 }
 #else
+/*@Iamroot 170104
+ * MIDR 비교 후 [19:16]비트가 0xf이면 mmfr0를 비교해서 cpu_arch를 구한다.
+ * raspberry pi2에서 cpu_arch는 9(CPU_ARCH_ARMv7)이다.
+ */
 static int __get_cpu_architecture(void)
 {
 	int cpu_arch;
@@ -294,12 +306,26 @@ static int cpu_has_aliasing_icache(unsigned int arch)
 		asm("mcr	p15, 2, %0, c0, c0, 0 @ set CSSELR"
 		    : /* No output operands */
 		    : "r" (1));
+#if 0  /* @Iamroot: 2017.01.21 */
+1 : instruction cache
+0 : data cache
+cache level은 0으로 설정
+manual p.1555 : CSSELR
+#endif /* @Iamroot  */
 		isb();
 		asm("mrc	p15, 1, %0, c0, c0, 0 @ read CCSIDR"
 		    : "=r" (id_reg));
 		line_size = 4 << ((id_reg & 0x7) + 2);
+#if 0  /* @Iamroot: 2017.01.21 */
+                Log 2 (Number of words in cache line)) -2
+#endif /* @Iamroot  */
 		num_sets = ((id_reg >> 13) & 0x7fff) + 1;
 		aliasing_icache = (line_size * num_sets) > PAGE_SIZE;
+#if 0  /* @Iamroot: 2017.01.21 */
+                aliasing_icache 는 1로 간주 하고 진행
+                http://lists.infradead.org/pipermail/linux-arm-kernel/2015-October/382023.html
+                참고
+#endif /* @Iamroot  */
 		break;
 	case CPU_ARCH_ARMv6:
 		aliasing_icache = read_cpuid_cachetype() & (1 << 11);
@@ -315,21 +341,41 @@ static int cpu_has_aliasing_icache(unsigned int arch)
 static void __init cacheid_init(void)
 {
 	unsigned int arch = cpu_architecture();
+#if 0  /* @Iamroot: 2017.01.21 */
+        arch = 9(ARMv7)
+#endif /* @Iamroot  */
 
 	if (arch == CPU_ARCH_ARMv7M) {
 		cacheid = 0;
 	} else if (arch >= CPU_ARCH_ARMv6) {
 		unsigned int cachetype = read_cpuid_cachetype();
 		if ((cachetype & (7 << 29)) == 4 << 29) {
+#if 0  /* @Iamroot: 2017.01.21 */
+                    CTR의 format 과 비교 
+#endif /* @Iamroot  */
 			/* ARMv7 register format */
 			arch = CPU_ARCH_ARMv7;
 			cacheid = CACHEID_VIPT_NONALIASING;
+#if 0  /* @Iamroot: 2017.01.21 */
+                        virtaul index, physical tag
+                        모기향 p.225 참고 
+#endif /* @Iamroot  */
 			switch (cachetype & (3 << 14)) {
+#if 0  /* @Iamroot: 2017.01.21 */
+                    CTR의 L1IP와 비교
+#endif /* @Iamroot  */
 			case (1 << 14):
 				cacheid |= CACHEID_ASID_TAGGED;
+#if 0  /* @Iamroot: 2017.01.21 */
+                                virtual index, virtual tag
+                                ASID : address space id
+#endif /* @Iamroot  */
 				break;
 			case (3 << 14):
 				cacheid |= CACHEID_PIPT;
+#if 0  /* @Iamroot: 2017.01.21 */
+                                physical index physical tag
+#endif /* @Iamroot  */
 				break;
 			}
 		} else {
@@ -416,6 +462,9 @@ static inline u32 __attribute_const__ bx_lr_instruction(void)
 	return __opcode_to_mem_arm(0xe12fff1e);
 }
 
+/*@Iamroot 170114
+ * aeabi : ARM Embedded-Application Binary Interface
+ */
 static void __init patch_aeabi_idiv(void)
 {
 	extern void __aeabi_uidiv(void);
@@ -423,12 +472,25 @@ static void __init patch_aeabi_idiv(void)
 	uintptr_t fn_addr;
 	unsigned int mask;
 
+	/*@Iamroot 170114
+	 * mask = HWCAP_IDIVA
+	 * !(elf_hwcap & mask) = 0이므로 return하지 않는다.
+	 */
 	mask = IS_ENABLED(CONFIG_THUMB2_KERNEL) ? HWCAP_IDIVT : HWCAP_IDIVA;
 	if (!(elf_hwcap & mask))
 		return;
+#if 0  /* @Iamroot: 2017.01.21 */
+        IS_ENABLED를 통하여 해당 명령어를 지원하는지 확인하여 지원하다면
+        아래 루틴을 진행한다 
+#endif /* @Iamroot  */
 
 	pr_info("CPU: div instructions available: patching division code\n");
 
+	/*@Iamroot 170114
+	 * udiv, sdiv, "bx lr" instruction 명령어가 존재한다해도 kernel에서는 직접 만든 코드로 각각 대체한다.
+	 * 이는 성능 향상을 목적으로 함
+	 * flush_icache_range()는 기존 캐시에 저장되었던 기존 명령어들을 갱신하기 위해 flush함
+	 */
 	fn_addr = ((uintptr_t)&__aeabi_uidiv) & ~1;
 	asm ("" : "+g" (fn_addr));
 	((u32 *)fn_addr)[0] = udiv_instruction();
@@ -455,17 +517,29 @@ static void __init cpuid_init_hwcaps(void)
 		return;
 
 	block = cpuid_feature_extract(CPUID_EXT_ISAR0, 24);
+	/*@Iamroot 170114
+	 * block이 0b10이라 가정한다.(ARM, THUMB instruction 지원)
+	 */
+
 	if (block >= 2)
 		elf_hwcap |= HWCAP_IDIVA;
 	if (block >= 1)
 		elf_hwcap |= HWCAP_IDIVT;
 
 	/* LPAE implies atomic ldrd/strd instructions */
+	/*@Iamroot 170114
+	 * LPAE 지원 여부를 확인한다.
+	 * 우리는 LPAE를 지원하지 않는다고 가정함
+	 */
+
 	block = cpuid_feature_extract(CPUID_EXT_MMFR0, 0);
 	if (block >= 5)
 		elf_hwcap |= HWCAP_LPAE;
 
 	/* check for supported v8 Crypto instructions */
+	/*@Iamroot 170114
+	 * cpuid_feature_extract_field(isar5, x)는 armv8일 때 설정된다.
+	 */
 	isar5 = read_cpuid_ext(CPUID_EXT_ISAR5);
 
 	block = cpuid_feature_extract_field(isar5, 4);
@@ -501,9 +575,17 @@ static void __init elf_hwcap_fixup(void)
 		return;
 	}
 
+#if 0  /* @Iamroot: 2017.01.21 */
+TLS : thread local storage
+          각각의 스레드가 같은 전역, 정적 변수에 접근하더라도
+          서로 다르게 독립적으로 사용할수 있게 한다
+#endif /* @Iamroot  */
 	/* Verify if CPUID scheme is implemented */
 	if ((id & 0x000f0000) != 0x000f0000)
 		return;
+#if 0  /* @Iamroot: 2017.01.21 */
+      MIDR에서 ARMv7 은 Architecture의 값이 F.
+#endif /* @Iamroot  */
 
 	/*
 	 * If the CPU supports LDREX/STREX and LDREXB/STREXB,
@@ -514,6 +596,12 @@ static void __init elf_hwcap_fixup(void)
 	    (cpuid_feature_extract(CPUID_EXT_ISAR3, 12) == 1 &&
 	     cpuid_feature_extract(CPUID_EXT_ISAR4, 20) >= 3))
 		elf_hwcap &= ~HWCAP_SWP;
+#if 0  /* @Iamroot: 2017.01.21 */
+      cpuid_feature_extract(CPUID_EXT_ISAR3, 12) : SynchPrim_instrs
+      cpuid_feature_extract(CPUID_EXT_ISAR4, 20) : SynchPrim_instrs_frac
+      HWCAP_SWP : 레지스터와 메모리 값을 한번에 바꿀수 있는 기능
+                  - multi core 에서는 사용하지 않음 
+#endif /* @Iamroot  */
 }
 
 /*
@@ -537,8 +625,14 @@ void notrace cpu_init(void)
 	 * boot cpu, smp_prepare_boot_cpu is called after percpu area setup.
 	 */
 	set_my_cpu_offset(per_cpu_offset(cpu));
-
+#if 0  /* @Iamroot: 2017.01.21 */
+        per_cpu의 offset을 읽어와 자신의 cpu의 offset 설정
+        banked register 를 사용
+#endif /* @Iamroot  */
 	cpu_proc_init();
+#if 0  /* @Iamroot: 2017.01.21 */
+cpu_proc_init : {return lr}
+#endif /* @Iamroot  */
 
 	/*
 	 * Define the placement constraint for the inline asm directive below.
@@ -579,6 +673,15 @@ void notrace cpu_init(void)
 	      "I" (offsetof(struct stack, fiq[0])),
 	      PLC (PSR_F_BIT | PSR_I_BIT | SVC_MODE)
 	    : "r14");
+	/*@Iamroot 170203
+	 * %1 : "r" (stk)
+	 * %2 : PLC (PSR_F_BIT | PSR_I_BIT | IRQ_MODE)
+	 * 요런식으로 %n에 각각 대입
+	 * 자세한 어셈블리 문법은 https://goo.gl/0S7Fb0 참고
+	 * IRQ, ABT, UND, FIQ, SVC 모드의 Stack Pointer를 설정
+	 * 마지막에 언급된 r14 레지스터는 컴파일러가 수정하지 못하게 막아놓음
+	 */
+
 #endif
 }
 
@@ -694,6 +797,10 @@ static void __init setup_processor(void)
 	 * types.  The linker builds this table for us from the
 	 * entries in arch/arm/mm/proc-*.S
 	 */
+	/*@Iamroot 170114
+	 * __lookup_processor_type에서 반환한 processor_type 구조체를 list에 넣는다
+	 * raspberry pi2에서는 __v7_ca7mp_proc_info 구조체가 list에 들어간다.
+	 */
 	list = lookup_processor_type(read_cpuid_id());
 	if (!list) {
 		pr_err("CPU configuration botched (ID %08x), unable to continue.\n",
@@ -703,7 +810,13 @@ static void __init setup_processor(void)
 
 	cpu_name = list->cpu_name;
 	__cpu_architecture = __get_cpu_architecture();
-
+	/*@Iamroot 170114
+	 * __cpu_architecture = 9
+	 */
+	
+	/*@Iamroot 170114
+	 * raspberry pi2에서는 MULTI_CPU가 set되어 있다.(CONFIG_CPU_V7)
+	 */
 #ifdef MULTI_CPU
 	processor = *list->proc;
 #endif
@@ -723,6 +836,12 @@ static void __init setup_processor(void)
 
 	snprintf(init_utsname()->machine, __NEW_UTS_LEN + 1, "%s%c",
 		 list->arch_name, ENDIANNESS);
+	/*@Iamroot 170114
+	 * kernel 버전과 cpu 정보, 버전과 Endian을 init_utsname에 넣는다.
+	 * ex) Linux odroid 4.2.0-rc1+ #4 SMP PREEMPT Fri Jul 10 16:45:24 KST 2015 armv7l
+	 * uts : unix timesharing system의 약자
+	 */
+
 	snprintf(elf_platform, ELF_PLATFORM_SIZE, "%s%c",
 		 list->elf_name, ENDIANNESS);
 	elf_hwcap = list->elf_hwcap;
@@ -730,11 +849,17 @@ static void __init setup_processor(void)
 	cpuid_init_hwcaps();
 	patch_aeabi_idiv();
 
+
 #ifndef CONFIG_ARM_THUMB
 	elf_hwcap &= ~(HWCAP_THUMB | HWCAP_IDIVT);
 #endif
 #ifdef CONFIG_MMU
 	init_default_cache_policy(list->__cpu_mm_mmu_flags);
+#if 0  /* @Iamroot: 2017.01.21 */
+__cpu_mm_mmu_flags :
+	ALT_SMP(.long	PMD_TYPE_SECT | PMD_SECT_AP_WRITE | PMD_SECT_AP_READ | \
+			PMD_SECT_AF | PMD_FLAGS_SMP | \mm_mmuflags)
+#endif /* @Iamroot  */
 #endif
 	erratum_a15_798181_init();
 
@@ -1051,6 +1176,9 @@ void __init setup_arch(char **cmdline_p)
 	const struct machine_desc *mdesc;
 
 	setup_processor();
+#if 0  /* @Iamroot: 2017.02.11 */
+__atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 사용 
+#endif /* @Iamroot  */
 	mdesc = setup_machine_fdt(__atags_pointer);
 	if (!mdesc)
 		mdesc = setup_machine_tags(__atags_pointer, __machine_arch_type);
@@ -1067,6 +1195,9 @@ void __init setup_arch(char **cmdline_p)
 	init_mm.brk	   = (unsigned long) _end;
 
 	/* populate cmd_line too for later use, preserving boot_command_line */
+	/*@Iamroot 170311
+	 * setup_machine_fdt에 설정된 boot_command_line를 cmd_line에 넣는다.
+	 */
 	strlcpy(cmd_line, boot_command_line, COMMAND_LINE_SIZE);
 	*cmdline_p = cmd_line;
 

@@ -419,7 +419,11 @@ static int __init do_early_param(char *param, char *val,
 		    (strcmp(param, "console") == 0 &&
 		     strcmp(p->str, "earlycon") == 0)
 		) {
-			if (p->setup_func(val) != 0)
+
+	/*@Iamroot 170311
+	 * val를 obs_kernel_param->setup_func에 넣는다.
+	 */
+		if (p->setup_func(val) != 0)
 				pr_warn("Malformed early option '%s'\n", param);
 		}
 	}
@@ -500,11 +504,15 @@ asmlinkage __visible void __init start_kernel(void)
 
 
 	/*@Iamroot 161203
-	 * local_irq_disable()부터 다음 시간에..
 	 * 모가향책 8장부터 시작
 	 * @Iamroot_TODO도 봐야함
 	 */
 	local_irq_disable();
+#if 0  /* @Iamroot: 2017.01.07 */
+        인터럽트 동작을 할수 없도록 설정한다.
+        cpsr의 i비트를 세팅 한다.
+        trace_hardirqs_off : debug나 trace 관련된 내용은 생략 
+#endif /* @Iamroot  */
 	early_boot_irqs_disabled = true;
 
 /*
@@ -514,6 +522,11 @@ asmlinkage __visible void __init start_kernel(void)
 	boot_cpu_init();
 	page_address_init();
 	pr_notice("%s", linux_banner);
+	/*@Iamroot_TODO 170114
+	 * 리눅스 커널 버전, 사용자명 등을 출력
+	 * console_init()가서 printk()에 대해 자세히 확인할 예정
+	 */
+
 	setup_arch(&command_line);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);

@@ -109,6 +109,10 @@ static inline __attribute_const__ __u32 __fswahb32(__u32 val)
  * __swab32 - return a byteswapped 32-bit value
  * @x: value to byteswap
  */
+/*@Iamroot 170218
+ * raspberry pi2에서 CONFIG_ARCH_USE_BUILTIN_BSWAP가 set되어있기 때문에
+ * __swab32(x) 실행시 __builtin_bswap32가 동작됨
+ */
 #ifdef __HAVE_BUILTIN_BSWAP32__
 #define __swab32(x) (__u32)__builtin_bswap32((__u32)(x))
 #else

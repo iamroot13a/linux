@@ -138,7 +138,12 @@ void __init init_default_cache_policy(unsigned long pmd)
 	initial_pmd_value = pmd;
 
 	pmd &= PMD_SECT_TEX(1) | PMD_SECT_BUFFERABLE | PMD_SECT_CACHEABLE;
-
+#if 0  /* @Iamroot: 2017.01.21 */
+        PMD_SECT_WBWA : (PMD_SECT_TEX(1) | PMD_SECT_CACHEABLE | PMD_SECT_BUFFERABLE)
+        cache_policies[]의 각 pmd 값과 위의 pmd의 값이 일치 하는것을 for문을 이용하여 찾는다
+        현재는 WBWA (arch/arm/mm/proc-v7.S - mmu_flags) 
+        manual p.1367 참조 
+#endif /* @Iamroot  */
 	for (i = 0; i < ARRAY_SIZE(cache_policies); i++)
 		if (cache_policies[i].pmd == pmd) {
 			cachepolicy = i;
@@ -385,6 +390,9 @@ static inline pmd_t * __init fixmap_pmd(unsigned long addr)
 void __init early_fixmap_init(void)
 {
 	pmd_t *pmd;
+	/*@Iamroot 170311
+	 * pmd : page middle directory
+	 */
 
 	/*
 	 * The early fixmap range spans multiple pmds, for which
@@ -392,7 +400,11 @@ void __init early_fixmap_init(void)
 	 */
 	BUILD_BUG_ON((__fix_to_virt(__end_of_early_ioremap_region) >> PMD_SHIFT)
 		     != FIXADDR_TOP >> PMD_SHIFT);
-
+	
+	/*@Iamroot 170311
+	 * fix_pmd()는 pgd, pud, pmd, pte's offset를 가져온다.
+	 * raspberry pi2는 2-level page table이므로 pgd, pte만 사용한다.
+	 */
 	pmd = fixmap_pmd(FIXADDR_TOP);
 	pmd_populate_kernel(&init_mm, pmd, bm_pte);
 

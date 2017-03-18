@@ -190,6 +190,7 @@ bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
 static const void * __init arch_get_next_mach(const char *const **match)
 {
 	static const struct machine_desc *mdesc = __arch_info_begin;
+        
 	const struct machine_desc *m = mdesc;
 
 	if (m >= __arch_info_end)
@@ -197,6 +198,10 @@ static const void * __init arch_get_next_mach(const char *const **match)
 
 	mdesc++;
 	*match = m->dt_compat;
+#if 0  /* @Iamroot: 2017.02.11 */
+        DT_MACHINE_START에 의해
+        코드에 저장(하드 코딩)되어 있는  compatible을 match에 저장
+#endif /* @Iamroot  */
 	return m;
 }
 

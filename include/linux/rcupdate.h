@@ -617,7 +617,7 @@ static inline void rcu_preempt_sleep_check(void)
  * @v: The value to statically initialize with.
  */
 #define RCU_INITIALIZER(v) (typeof(*(v)) __force __rcu *)(v)
-
+//typeof(*(pa[0]) __force __rcu *)(pa[0])
 /**
  * rcu_assign_pointer() - assign to RCU-protected pointer
  * @p: pointer to assign to

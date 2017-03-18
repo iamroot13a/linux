@@ -747,6 +747,12 @@ set_cpu_online(unsigned int cpu, bool online)
 		cpumask_set_cpu(cpu, &__cpu_online_mask);
 	else
 		cpumask_clear_cpu(cpu, &__cpu_online_mask);
+#if 0  /* @Iamroot: 2017.01.07 */
+        set_bit는 _set_bit로 동작한다 
+        _set_bit는 compiler내부 함수
+        _set_bit(0, (bits)의 주소) -> 주소의 위치에 0번비트를 1로 세팅
+        _set_bit(x, y) -> y의 주소의 x번째 비트를 1로 세팅
+#endif /* @Iamroot  */
 }
 
 static inline void

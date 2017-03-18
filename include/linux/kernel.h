@@ -742,6 +742,9 @@ static inline void ftrace_dump(enum ftrace_dump_mode oops_dump_mode) { }
  * strict type-checking.. See the
  * "unnecessary" pointer comparison.
  */
+/*@Iamroot 170225
+ * (void) (&_min1 == &_min2);는 type-checking하기 위해서다.
+ */
 #define min(x, y) ({				\
 	typeof(x) _min1 = (x);			\
 	typeof(y) _min2 = (y);			\

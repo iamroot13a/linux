@@ -18,6 +18,12 @@ static inline void __set_bit(int nr, volatile unsigned long *addr)
 	unsigned long *p = ((unsigned long *)addr) + BIT_WORD(nr);
 
 	*p  |= mask;
+#if 0  /* @Iamroot: 2017.01.07 */
+        bitmap의 크기는 32byte(256bit)이고 bit_per_long(32)를 이용해서 위치를 정한다
+        ex) nr의 값이 127이라면 mask는 127 % 32 = 31 이며
+            *p는 p->bitmap의 시작위치 + (127 / 32)을 합해서 p->bitmap의 배열의 인덱스를 구한 값이다
+            거기서 *p에 mask를 or연산 하여서 정확한 위치를 정한다 
+#endif /* @Iamroot  */
 }
 
 static inline void __clear_bit(int nr, volatile unsigned long *addr)
