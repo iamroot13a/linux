@@ -891,19 +891,30 @@ int __init arm_add_memory(u64 start, u64 size)
 	 * Ensure that start/size are aligned to a page boundary.
 	 * Size is rounded down, start is rounded up.
 	 */
+
+#if 0  /* @Iamroot: 2017.03.18 */
+		* start address는 page size만큼 round-up하고 size는 round-up 된 것만큼 줄여준다 
+#endif /* @Iamroot  */
 	aligned_start = PAGE_ALIGN(start);
 	if (aligned_start > start + size)
 		size = 0;
 	else
 		size -= aligned_start - start;
 
+
 #ifndef CONFIG_ARCH_PHYS_ADDR_T_64BIT
+#if 0  /* @Iamroot: 2017.03.18 */
+		* aligned_start가 32bit가 허용하는 최대값을 넘어가는지 체크 
+#endif /* @Iamroot  */
 	if (aligned_start > ULONG_MAX) {
 		pr_crit("Ignoring memory at 0x%08llx outside 32-bit physical address space\n",
 			(long long)start);
 		return -EINVAL;
 	}
 
+#if 0  /* @Iamroot: 2017.03.18 */
+		* aligned_start부터 최대 size까지 쓰겠다.
+#endif /* @Iamroot  */
 	if (aligned_start + size > ULONG_MAX) {
 		pr_crit("Truncating memory at 0x%08llx to fit in 32-bit physical address space\n",
 			(long long)start);
@@ -916,6 +927,11 @@ int __init arm_add_memory(u64 start, u64 size)
 	}
 #endif
 
+#if 0  /* @Iamroot: 2017.03.18 */
+		* aligned_start + size 가 PHYS_OFFSET보다 작으면 사용할 공간이 없어서 사용불가 
+		* aligned_start가 PHYS_OFFSET보다 작지만 size를 더했을 경우 PHYS_OFFSET보다 클 경우
+		* PHYS_OFFSET부터 aligned_start + size 까지 사용한다.
+#endif /* @Iamroot  */
 	if (aligned_start < PHYS_OFFSET) {
 		if (aligned_start + size <= PHYS_OFFSET) {
 			pr_info("Ignoring memory below PHYS_OFFSET: 0x%08llx-0x%08llx\n",
@@ -931,6 +947,10 @@ int __init arm_add_memory(u64 start, u64 size)
 	}
 
 	start = aligned_start;
+
+#if 0  /* @Iamroot: 2017.03.18 */
+		* size를 round-down
+#endif /* @Iamroot  */
 	size = size & ~(phys_addr_t)(PAGE_SIZE - 1);
 
 	/*
@@ -961,12 +981,21 @@ static int __init early_mem(char *p)
 	 * blow away any automatically generated
 	 * size.
 	 */
+	
+#if 0  /* @Iamroot: 2017.03.18 */
+		* 논리적으로 할당된 memblock을 전부 삭제한다. 
+#endif /* @Iamroot  */
 	if (usermem == 0) {
 		usermem = 1;
 		memblock_remove(memblock_start_of_DRAM(),
 			memblock_end_of_DRAM() - memblock_start_of_DRAM());
 	}
 
+#if 0  /* @Iamroot: 2017.03.18 */
+		* CONFIG_PHYS_OFFSET은 컴파일을 해야 생성되는 define이고 뜻은 커널이 가질수 있는 물리메모리			* 의 시작주소 
+		* mem= 64m@0x80000000 경우 전체 메모리가 64Mb 시작주소는 0x80000000
+		* '@'이후부터는 생략가능 
+#endif /* @Iamroot  */
 	start = PHYS_OFFSET;
 	size  = memparse(p, &endp);
 	if (*endp == '@')
@@ -1210,6 +1239,10 @@ __atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 �
 	early_paging_init(mdesc);
 #endif
 	setup_dma_zone(mdesc);
+
+#if 0  /* @Iamroot: 2017.03.18 */
+		* efi_init()은 지원안하므로 패스
+#endif /* @Iamroot  */
 	efi_init();
 	sanity_check_meminfo();
 	arm_memblock_init(mdesc);
