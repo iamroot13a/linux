@@ -252,7 +252,7 @@ char *parse_args(const char *doing,
 	 */
 
 	/*@Iamroot 170311
-	 * 다음 시간에...
+	 * 
 	 */
 		if (irq_was_disabled && !irqs_disabled())
 			pr_warn("%s: option '%s' enabled irq's!\n",
