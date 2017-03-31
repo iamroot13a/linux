@@ -568,6 +568,10 @@ static u32 of_fdt_crc32;
 static int __init __reserved_mem_reserve_reg(unsigned long node,
 					     const char *uname)
 {
+#if 0  /* @Iamroot: 2017.03.25 */
+    node 는  해당 노드의 offset(base + offset 은 노드의 주소)
+    uname은 해당 노드의 이름
+#endif /* @Iamroot  */
 	int t_len = (dt_root_addr_cells + dt_root_size_cells) * sizeof(__be32);
 	phys_addr_t base, size;
 	int len;
@@ -577,7 +581,9 @@ static int __init __reserved_mem_reserve_reg(unsigned long node,
 	prop = of_get_flat_dt_prop(node, "reg", &len);
 	if (!prop)
 		return -ENOENT;
-
+#if 0  /* @Iamroot: 2017.03.25 */
+        reg 를 불러와 len과 prop를 로드한다
+#endif /* @Iamroot  */
 	if (len && len % t_len != 0) {
 		pr_err("Reserved memory: invalid reg property in '%s', skipping node.\n",
 		       uname);
@@ -598,10 +604,17 @@ static int __init __reserved_mem_reserve_reg(unsigned long node,
 			pr_info("Reserved memory: failed to reserve memory for node '%s': base %pa, size %ld MiB\n",
 				uname, &base, (unsigned long)size / SZ_1M);
 
+#if 0  /* @Iamroot: 2017.03.25 */
+                nomap이 있을경우 reserve에서 삭제한다 
+                없을경우 추가한다
+#endif /* @Iamroot  */
 		len -= t_len;
 		if (first) {
 			fdt_reserved_mem_save_node(node, uname, base, size);
 			first = 0;
+#if 0  /* @Iamroot: 2017.03.25 */
+                        reserved_mem에 해당 노드를 저장
+#endif /* @Iamroot  */
 		}
 	}
 	return 0;
@@ -623,7 +636,9 @@ static int __init __reserved_mem_check_root(unsigned long node)
 	prop = of_get_flat_dt_prop(node, "#address-cells", NULL);
 	if (!prop || be32_to_cpup(prop) != dt_root_addr_cells)
 		return -EINVAL;
-
+#if 0  /* @Iamroot: 2017.03.25 */
+        dt_root와 reserved-memory-node에서  size-cells과 address-cells를 비교한다
+#endif /* @Iamroot  */
 	prop = of_get_flat_dt_prop(node, "ranges", NULL);
 	if (!prop)
 		return -EINVAL;
@@ -660,11 +675,17 @@ static int __init __fdt_scan_reserved_mem(unsigned long node, const char *uname,
 	status = of_get_flat_dt_prop(node, "status", NULL);
 	if (status && strcmp(status, "okay") != 0 && strcmp(status, "ok") != 0)
 		return 0;
+#if 0  /* @Iamroot: 2017.03.25 */
+        dts 파일에 status가 okey나 ok 이 아닐 경우  return
+#endif /* @Iamroot  */
 
 	err = __reserved_mem_reserve_reg(node, uname);
 	if (err == -ENOENT && of_get_flat_dt_prop(node, "size", NULL))
 		fdt_reserved_mem_save_node(node, uname, 0, 0);
 
+#if 0  /* @Iamroot: 2017.03.25 */
+        
+#endif /* @Iamroot  */
 	/* scan next node */
 	return 0;
 }
@@ -691,8 +712,18 @@ void __init early_init_fdt_scan_reserved_mem(void)
 			break;
 		early_init_dt_reserve_memory_arch(base, size, 0);
 	}
+#if 0  /* @Iamroot: 2017.03.25 */
+        rsv테이블을 하나씩 차례로 불러와서 size가 0일때 까지 읽어온다
+        그리고 차례차례 읽어온 base와 size를 reserve에 삽입한다
+#endif /* @Iamroot  */
 
+#if 0  /* @Iamroot: 2017.03.25 */
+        다음주에는 memblock.reserve 복습과 용도 체크 하기  
+#endif /* @Iamroot  */
 	of_scan_flat_dt(__fdt_scan_reserved_mem, NULL);
+#if 0  /* @Iamroot: 2017.03.25 */
+        오늘은 여기까지 
+#endif /* @Iamroot  */
 	fdt_init_reserved_mem();
 }
 
@@ -708,6 +739,10 @@ void __init early_init_fdt_reserve_self(void)
 	early_init_dt_reserve_memory_arch(__pa(initial_boot_params),
 					  fdt_totalsize(initial_boot_params),
 					  0);
+#if 0  /* @Iamroot: 2017.03.25 */
+initial_boot_params : dtb의 가상의 시작주소
+            dtb를 reserve에 추가한다
+#endif /* @Iamroot  */
 }
 
 /**

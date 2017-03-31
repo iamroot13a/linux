@@ -1134,7 +1134,14 @@ void __init debug_ll_io_init(void)
 
 static void * __initdata vmalloc_min =
 	(void *)(VMALLOC_END - (240 << 20) - VMALLOC_OFFSET);
+#if 0  /* @Iamroot: 2017.03.25 */
+VMALLOC_END : 0xff800000UL
+240 << 20 :   0x0f000000
+VMALLOC_OFFSET : 8*1024*1024
+              0x00800000
 
+              = 0xf0000000
+#endif /* @Iamroot  */
 /*
  * vmalloc=size forces the vmalloc area to be exactly 'size'
  * bytes. This can be used to increase (or decrease) the vmalloc
@@ -1168,6 +1175,9 @@ void __init sanity_check_meminfo(void)
 	phys_addr_t memblock_limit = 0;
 	int highmem = 0;
 	phys_addr_t vmalloc_limit = __pa(vmalloc_min - 1) + 1;
+#if 0  /* @Iamroot: 2017.03.25 */
+vmalloc_min : 0xF0000000
+#endif /* @Iamroot  */
 	struct memblock_region *reg;
 	bool should_use_highmem = false;
 
@@ -1180,6 +1190,9 @@ void __init sanity_check_meminfo(void)
 			highmem = 1;
 		else
 			size_limit = vmalloc_limit - reg->base;
+#if 0  /* @Iamroot: 2017.03.25 */
+                현재 memblock이 vmalloc_limit을 초과할경우 base에서 vmalloc_limit 까지의 사이즈 구함
+#endif /* @Iamroot  */
 
 
 		if (!IS_ENABLED(CONFIG_HIGHMEM) || cache_is_vipt_aliasing()) {
@@ -1200,6 +1213,10 @@ void __init sanity_check_meminfo(void)
 				memblock_remove(vmalloc_limit, overlap_size);
 				block_end = vmalloc_limit;
 				should_use_highmem = true;
+#if 0  /* @Iamroot: 2017.03.25 */
+                                reg->base + reg->size가 vmalloc_min을 초과하였을경우 
+                                vmalloc 이상 사용하면 안되므로 윗부분을 삭제 한다 
+#endif /* @Iamroot  */
 			}
 		}
 
@@ -1210,6 +1227,9 @@ void __init sanity_check_meminfo(void)
 				else
 					arm_lowmem_limit = block_end;
 			}
+#if 0  /* @Iamroot: 2017.03.25 */
+                        for문을 돌면서 단 한번만 분기함
+#endif /* @Iamroot  */
 
 			/*
 			 * Find the first non-pmd-aligned page, and point
@@ -1239,6 +1259,11 @@ void __init sanity_check_meminfo(void)
 
 	high_memory = __va(arm_lowmem_limit - 1) + 1;
 
+#if 0  /* @Iamroot: 2017.03.25 */
+        arm_lowmem_limit의 경우 memblock을 for문으로 검사하면서 각 memblock의 
+        end 주소로 최신화 하다 마지막 memblock의 end주소가 됨
+        (단 vmalloc를 초과할경우 vmalloc가 arm_lowmem_limit으로 됨
+#endif /* @Iamroot  */
 	/*
 	 * Round the memblock limit down to a pmd size.  This
 	 * helps to ensure that we will allocate memory from the
@@ -1248,8 +1273,18 @@ void __init sanity_check_meminfo(void)
 		memblock_limit = round_down(memblock_limit, PMD_SIZE);
 	if (!memblock_limit)
 		memblock_limit = arm_lowmem_limit;
-
+#if 0  /* @Iamroot: 2017.03.25 */
+                memblock_limit를 round_down
+#endif /* @Iamroot  */
 	memblock_set_current_limit(memblock_limit);
+#if 0  /* @Iamroot: 2017.03.25 */
+        membloc.current_limit 라는 전역변수에 현재 구한 memblock_limit값을 삽입
+        memory memblock들이 2M 단위로 align되어 있어야 커널 설정 초기에 사용되는 
+        early memory allocator에서 2M 영역을 할당하여 사용하는 reserve memblock을 운영하여야 하므로
+        각 memory memblock 들이 2M align되어 있지 않은 memblock이 있는 경우 
+        그 지점의 2M round down 주소까지로 사용을 제한하도록 memblock_limit를 설정한다.
+        - 문 C 블로그 -
+#endif /* @Iamroot  */
 }
 
 static inline void prepare_page_table(void)
@@ -1294,6 +1329,9 @@ static inline void prepare_page_table(void)
 #define SWAPPER_PG_DIR_SIZE	(PTRS_PER_PGD * sizeof(pgd_t))
 #endif
 
+#if 0  /* @Iamroot: 2017.03.25 */
+PTRS_PER_PGD : 2048  
+#endif /* @Iamroot  */
 /*
  * Reserve the special regions of memory
  */
@@ -1304,7 +1342,9 @@ void __init arm_mm_memblock_reserve(void)
 	 * and can only be in node 0.
 	 */
 	memblock_reserve(__pa(swapper_pg_dir), SWAPPER_PG_DIR_SIZE);
-
+#if 0  /* @Iamroot: 2017.03.25 */
+        페이지테이블을 reserve에 추가한다
+#endif /* @Iamroot  */
 #ifdef CONFIG_SA1111
 	/*
 	 * Because of the SA1111 DMA bug, we want to preserve our

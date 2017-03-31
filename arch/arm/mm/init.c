@@ -236,10 +236,16 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 	memblock_reserve(__pa(_stext), _end - _stext);
 #endif
 #ifdef CONFIG_BLK_DEV_INITRD
+#if 0  /* @Iamroot: 2017.03.25 */
+        램디스크와 램파일시스템을 초기화 할지 안할지 결정하는 Config
+#endif /* @Iamroot  */
 	/* FDT scan will populate initrd_start */
 	if (initrd_start && !phys_initrd_size) {
 		phys_initrd_start = __virt_to_phys(initrd_start);
 		phys_initrd_size = initrd_end - initrd_start;
+#if 0  /* @Iamroot: 2017.03.25 */
+                initrd의 시작 물리주소와 size를 구함
+#endif /* @Iamroot  */
 	}
 	initrd_start = initrd_end = 0;
 	if (phys_initrd_size &&
@@ -252,11 +258,16 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 	    memblock_is_region_reserved(phys_initrd_start, phys_initrd_size)) {
 		pr_err("INITRD: 0x%08llx+0x%08lx overlaps in-use memory region - disabling initrd\n",
 		       (u64)phys_initrd_start, phys_initrd_size);
+#if 0  /* @Iamroot: 2017.03.25 */
+                text영역과 Data영역의 주소와 initrd의 영역이 겹치는지 조사한다
+#endif /* @Iamroot  */
 		phys_initrd_start = phys_initrd_size = 0;
 	}
 	if (phys_initrd_size) {
 		memblock_reserve(phys_initrd_start, phys_initrd_size);
-
+#if 0  /* @Iamroot: 2017.03.25 */
+                memblock.reserve에 initrd를 집어 넣는다 
+#endif /* @Iamroot  */
 		/* Now convert initrd to virtual addresses */
 		initrd_start = __phys_to_virt(phys_initrd_start);
 		initrd_end = initrd_start + phys_initrd_size;
@@ -268,6 +279,9 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 	/* reserve any platform specific memblock areas */
 	if (mdesc->reserve)
 		mdesc->reserve();
+#if 0  /* @Iamroot: 2017.03.25 */
+        mdesc->reserve가 선언되어 있을경우 실행
+#endif /* @Iamroot  */
 
 	early_init_fdt_reserve_self();
 	early_init_fdt_scan_reserved_mem();
