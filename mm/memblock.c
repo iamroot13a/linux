@@ -92,6 +92,9 @@ static unsigned long __init_memblock memblock_addrs_overlap(phys_addr_t base1, p
 				       phys_addr_t base2, phys_addr_t size2)
 {
 	return ((base1 < (base2 + size2)) && (base2 < (base1 + size1)));
+#if 0  /* @Iamroot: 2017.03.25 */
+        base1 과 base2의 memblock이 서로 겹치는지 확인한다 
+#endif /* @Iamroot  */
 }
 
 bool __init_memblock memblock_overlaps_region(struct memblock_type *type,
@@ -753,6 +756,9 @@ int __init_memblock memblock_reserve(phys_addr_t base, phys_addr_t size)
 		     0UL, (void *)_RET_IP_);
 
 	return memblock_add_range(&memblock.reserved, base, size, MAX_NUMNODES, 0);
+#if 0  /* @Iamroot: 2017.03.25 */
+        기존에 memblock.memory에서 했던 작업과 동일하게 memblock.reserve를 작업
+#endif /* @Iamroot  */
 }
 
 /**
@@ -1574,6 +1580,9 @@ int __init_memblock memblock_search_pfn_nid(unsigned long pfn,
 int __init_memblock memblock_is_region_memory(phys_addr_t base, phys_addr_t size)
 {
 	int idx = memblock_search(&memblock.memory, base);
+#if 0  /* @Iamroot: 2017.03.25 */
+        memblock.memory에서 이분법으로 검색하여 base가 memblock안에 들어가 있는지 체크한다
+#endif /* @Iamroot  */
 	phys_addr_t end = base + memblock_cap_size(base, &size);
 
 	if (idx == -1)
@@ -1581,6 +1590,9 @@ int __init_memblock memblock_is_region_memory(phys_addr_t base, phys_addr_t size
 	return memblock.memory.regions[idx].base <= base &&
 		(memblock.memory.regions[idx].base +
 		 memblock.memory.regions[idx].size) >= end;
+#if 0  /* @Iamroot: 2017.03.25 */
+        base와 end가  해당 memblock 범위안에 있는지 체크한다 
+#endif /* @Iamroot  */
 }
 
 /**
