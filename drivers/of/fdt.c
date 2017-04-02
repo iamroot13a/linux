@@ -725,6 +725,10 @@ void __init early_init_fdt_scan_reserved_mem(void)
         오늘은 여기까지 
 #endif /* @Iamroot  */
 	fdt_init_reserved_mem();
+
+#if 0  /* @Iamroot: 2017.04.01 */
+		오늘은 여기까지
+#endif /* @Iamroot  */
 }
 
 /**
