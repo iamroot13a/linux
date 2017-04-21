@@ -204,7 +204,9 @@ int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
 	*res_cma = cma;
 	cma_area_count++;
 	totalcma_pages += (size / PAGE_SIZE);
-
+#if 0  /* @Iamroot: 2017.04.15 */
+order_per_bit : 2^n 만큼 사용한다 n : order_per_bit
+#endif /* @Iamroot  */
 	return 0;
 }
 
@@ -226,6 +228,9 @@ int __init cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
  * If @fixed is true, reserve contiguous area at exactly @base.  If false,
  * reserve in range from @base to @limit.
  */
+#if 0  /* @Iamroot: 2017.04.15 */
+ret = cma_declare_contiguous(base, size, limit, 0, 0, fixed(false), res_cma);
+#endif /* @Iamroot  */
 int __init cma_declare_contiguous(phys_addr_t base,
 			phys_addr_t size, phys_addr_t limit,
 			phys_addr_t alignment, unsigned int order_per_bit,
@@ -254,6 +259,9 @@ int __init cma_declare_contiguous(phys_addr_t base,
 		pr_err("Not enough slots for CMA reserved regions!\n");
 		return -ENOSPC;
 	}
+#if 0  /* @Iamroot: 2017.04.15 */
+        cma_area_count 의 최대 값은 8
+#endif /* @Iamroot  */
 
 	if (!size)
 		return -EINVAL;
@@ -269,8 +277,16 @@ int __init cma_declare_contiguous(phys_addr_t base,
 	 */
 	alignment = max(alignment,  (phys_addr_t)PAGE_SIZE <<
 			  max_t(unsigned long, MAX_ORDER - 1, pageblock_order));
+#if 0  /* @Iamroot: 2017.04.15 */
+        MAX_ORDER = 10 pagebloc_order = 10 PAGE_SIZE : 4K 
+        alignmet = 4Mb
+#endif /* @Iamroot  */
 	base = ALIGN(base, alignment);
 	size = ALIGN(size, alignment);
+#if 0  /* @Iamroot: 2017.04.15 */
+        base와 size를 alignmet단위로 올림 하여 align 한다
+        현재 size는 5Mb이고 alignment는 4Mb이므로 최종적으로 size는 8Mb이다
+#endif /* @Iamroot  */
 	limit &= ~(alignment - 1);
 
 	if (!base)
@@ -279,6 +295,9 @@ int __init cma_declare_contiguous(phys_addr_t base,
 	/* size should be aligned with order_per_bit */
 	if (!IS_ALIGNED(size >> PAGE_SHIFT, 1 << order_per_bit))
 		return -EINVAL;
+#if 0  /* @Iamroot: 2017.04.15 */
+        size >> PAGE_SHIFT : 8M >> 12 = 2k
+#endif /* @Iamroot  */
 
 	/*
 	 * If allocating at a fixed base the request region must not cross the
@@ -290,6 +309,9 @@ int __init cma_declare_contiguous(phys_addr_t base,
 			&base, &highmem_start);
 		goto err;
 	}
+#if 0  /* @Iamroot: 2017.04.15 */
+        fixed가 false으로 pass`
+#endif /* @Iamroot  */
 
 	/*
 	 * If the limit is unspecified or above the memblock end, its effective
@@ -320,6 +342,12 @@ int __init cma_declare_contiguous(phys_addr_t base,
 						    highmem_start, limit,
 						    MEMBLOCK_NONE);
 			limit = highmem_start;
+#if 0  /* @Iamroot: 2017.04.15 */
+                        memblock에 할당을 해주는데 만약 이게 실패 했을경우
+                        서로 다른영역에 걸치게 할당을 해주면 안되므로
+                        limit를 higmem_start로 바꾸어서 low memory영역에만 할당될수 
+                        있도록 설정을 한다.
+#endif /* @Iamroot  */
 		}
 
 		if (!addr) {
@@ -338,11 +366,18 @@ int __init cma_declare_contiguous(phys_addr_t base,
 		 */
 		kmemleak_ignore(phys_to_virt(addr));
 		base = addr;
+#if 0  /* @Iamroot: 2017.04.15 */
+                memory leak 트래킹 할때 check하지 않도록 설정하는 것 
+#endif /* @Iamroot  */
 	}
 
 	ret = cma_init_reserved_mem(base, size, order_per_bit, res_cma);
 	if (ret)
 		goto err;
+#if 0  /* @Iamroot: 2017.04.15 */
+        cma_area[]에 해당 내용의 cma를 추가 하고 cma count를 1 더한다
+        order_per_bit : bit map에서 1bit로 표시되는 페이지의 순서
+#endif /* @Iamroot  */
 
 	pr_info("Reserved %ld MiB at %pa\n", (unsigned long)size / SZ_1M,
 		&base);

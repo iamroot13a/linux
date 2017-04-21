@@ -469,6 +469,10 @@ static void __init build_mem_type_table(void)
 		if (!(initial_pmd_value & PMD_SECT_S)) {
 			pr_warn("Forcing shared mappings for SMP\n");
 			initial_pmd_value |= PMD_SECT_S;
+#if 0  /* @Iamroot: 2017.04.15 */
+                        SMP에서 각 CPU가 해당 page를 공유할수 있도록 S bit를 활성화 함
+                        p.1329
+#endif /* @Iamroot  */
 		}
 	}
 
@@ -516,7 +520,10 @@ static void __init build_mem_type_table(void)
 			mem_types[MT_DEVICE_NONSHARED].prot_sect |= PMD_SECT_XN;
 			mem_types[MT_DEVICE_CACHED].prot_sect |= PMD_SECT_XN;
 			mem_types[MT_DEVICE_WC].prot_sect |= PMD_SECT_XN;
-
+#if 0  /* @Iamroot: 2017.04.15 */
+                        xsc3를 제외한 나머지에서는 해당 디바이스 메모리를 사용할수 없도록
+                        설정한다
+#endif /* @Iamroot  */
 			/* Also setup NX memory mapping */
 			mem_types[MT_MEMORY_RW].prot_sect |= PMD_SECT_XN;
 		}
@@ -531,6 +538,9 @@ static void __init build_mem_type_table(void)
 			mem_types[MT_DEVICE].prot_sect |= PMD_SECT_TEX(1);
 			mem_types[MT_DEVICE_NONSHARED].prot_sect |= PMD_SECT_TEX(1);
 			mem_types[MT_DEVICE_WC].prot_sect |= PMD_SECT_BUFFERABLE;
+#if 0  /* @Iamroot: 2017.04.15 */
+                        다음주에 재검토
+#endif /* @Iamroot  */
 		} else if (cpu_is_xsc3()) {
 			/*
 			 * For Xscale3,
@@ -566,6 +576,10 @@ static void __init build_mem_type_table(void)
 	 */
 	cp = &cache_policies[cachepolicy];
 	vecs_pgprot = kern_pgprot = user_pgprot = cp->pte;
+#if 0  /* @Iamroot: 2017.04.15 */
+vecs : vectors
+        다음주에 
+#endif /* @Iamroot  */
 	s2_pgprot = cp->pte_s2;
 	hyp_device_pgprot = mem_types[MT_DEVICE].prot_pte;
 	s2_device_pgprot = mem_types[MT_DEVICE].prot_pte_s2;

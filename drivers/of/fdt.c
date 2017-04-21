@@ -717,18 +717,11 @@ void __init early_init_fdt_scan_reserved_mem(void)
         그리고 차례차례 읽어온 base와 size를 reserve에 삽입한다
 #endif /* @Iamroot  */
 
-#if 0  /* @Iamroot: 2017.03.25 */
-        다음주에는 memblock.reserve 복습과 용도 체크 하기  
-#endif /* @Iamroot  */
 	of_scan_flat_dt(__fdt_scan_reserved_mem, NULL);
-#if 0  /* @Iamroot: 2017.03.25 */
-        오늘은 여기까지 
-#endif /* @Iamroot  */
+
 	fdt_init_reserved_mem();
 
-#if 0  /* @Iamroot: 2017.04.01 */
-		오늘은 여기까지
-#endif /* @Iamroot  */
+
 }
 
 /**
