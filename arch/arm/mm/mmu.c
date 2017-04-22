@@ -118,6 +118,10 @@ static struct cachepolicy cache_policies[] __initdata = {
 		.pmd		= PMD_SECT_WBWA,
 		.pte		= L_PTE_MT_WRITEALLOC,
 		.pte_s2		= s2_policy(L_PTE_S2_MT_WRITEBACK),
+	/*@Iamroot 170422
+	 * L_PTE : Linux PTE
+	 */
+
 	}
 };
 
@@ -539,7 +543,12 @@ static void __init build_mem_type_table(void)
 			mem_types[MT_DEVICE_NONSHARED].prot_sect |= PMD_SECT_TEX(1);
 			mem_types[MT_DEVICE_WC].prot_sect |= PMD_SECT_BUFFERABLE;
 #if 0  /* @Iamroot: 2017.04.15 */
-                        다음주에 재검토
+			S : Sharable bit
+			X : TEX[0] bit
+			C : Cacheable bit
+			B : Bufferable bit
+			mem_types table : overhead를 줄이기 위해 memory type's property을 미리 설정한다.
+			(shared, nonshared, write combine)
 #endif /* @Iamroot  */
 		} else if (cpu_is_xsc3()) {
 			/*
@@ -578,11 +587,15 @@ static void __init build_mem_type_table(void)
 	vecs_pgprot = kern_pgprot = user_pgprot = cp->pte;
 #if 0  /* @Iamroot: 2017.04.15 */
 vecs : vectors
-        다음주에 
+		   vectors. kernel, user property를 L_PTA_WRITE_ALLOC로 설정
 #endif /* @Iamroot  */
 	s2_pgprot = cp->pte_s2;
 	hyp_device_pgprot = mem_types[MT_DEVICE].prot_pte;
 	s2_device_pgprot = mem_types[MT_DEVICE].prot_pte_s2;
+	/*@Iamroot 170422
+	 * s2는 stage2 약어로 hypervisor에서 구동되는 mmu table 중 하나다.
+	 * app <-> stage1 mmu <-> OS <-> stage2 mmu <-> phys memory
+	 */
 
 #ifndef CONFIG_ARM_LPAE
 	/*
@@ -601,6 +614,10 @@ vecs : vectors
 		(read_cpuid_ext(CPUID_EXT_MMFR0) & 0xF) >= 4) {
 		user_pmd_table |= PMD_PXNTABLE;
 	}
+	/*@Iamroot 170422
+	 * kernel모드일 때 user영역의 코드를 실행못하게 설정
+	 */
+
 #endif
 
 	/*
@@ -615,12 +632,21 @@ vecs : vectors
 		mem_types[MT_ROM].prot_sect |= PMD_SECT_APX|PMD_SECT_AP_WRITE;
 		mem_types[MT_MINICLEAN].prot_sect |= PMD_SECT_APX|PMD_SECT_AP_WRITE;
 		mem_types[MT_CACHECLEAN].prot_sect |= PMD_SECT_APX|PMD_SECT_AP_WRITE;
+	/*@Iamroot 170422
+	 * MT : Memory Type
+	 * MT_ROM을 Read-only, only at PL1 or higher로 설정
+	 * MINCLEAN과 CACHECLEAN은 Cache Flush Region 아키텍처에 사용
+	 */
+
 #endif
 
 		/*
 		 * If the initial page tables were created with the S bit
 		 * set, then we need to do the same here for the same
 		 * reasons given in early_cachepolicy().
+		 */
+		/*@Iamroot 170422
+		 *다음 시간에...
 		 */
 		if (initial_pmd_value & PMD_SECT_S) {
 			user_pgprot |= L_PTE_SHARED;
