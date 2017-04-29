@@ -879,6 +879,7 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 	} while (pmd++, addr = next, addr != end);
 }
 
+//		alloc_init_pud(pgd, addr, next, phys, type, alloc, ng);
 static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
 				  unsigned long end, phys_addr_t phys,
 				  const struct mem_type *type,
@@ -955,7 +956,7 @@ static void __init create_36bit_mapping(struct mm_struct *mm,
 	} while (addr != end);
 }
 #endif	/* !CONFIG_ARM_LPAE */
-
+//early_alloc
 static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 				    void *(*alloc)(unsigned long sz),
 				    bool ng)
@@ -978,8 +979,18 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 #endif
 
 	addr = md->virtual & PAGE_MASK;
+    /* ex) addr = 0xabcd1234 => addr = 0xabcd1000 */
 	phys = __pfn_to_phys(md->pfn);
+    /* phys format = 0xabcd1000 */
 	length = PAGE_ALIGN(md->length + (md->virtual & ~PAGE_MASK));
+    /*
+        Ex)
+        md->length : 10K,
+        page_offset(2K)
+        md->length + page_offset = 12K
+
+        So, 3 pages should be mapped
+    */
 
 	if (type->prot_l1 == 0 && ((addr | phys | length) & ~SECTION_MASK)) {
 		pr_warn("BUG: map for 0x%08llx at 0x%08lx can not be mapped using pages, ignoring.\n",
@@ -989,7 +1000,12 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 
 	pgd = pgd_offset(mm, addr);
 	end = addr + length;
+    /*
+        pgd: translation base address + offset
+        end: end virtual address
+    */
 	do {
+        /* next cannot be over the end of pgd */
 		unsigned long next = pgd_addr_end(addr, end);
 
 		alloc_init_pud(pgd, addr, next, phys, type, alloc, ng);
@@ -1531,6 +1547,7 @@ static void __init map_lowmem(void)
 
 	/* Map all the lowmem memory banks. */
 	for_each_memblock(memory, reg) {
+        /* "reg" variable is assigned from every single memblock of memory*/
 		phys_addr_t start = reg->base;
 		phys_addr_t end = start + reg->size;
 		struct map_desc map;
@@ -1542,6 +1559,11 @@ static void __init map_lowmem(void)
 			end = arm_lowmem_limit;
 		if (start >= end)
 			break;
+
+        /*
+            kernel_x_start: the start point of _stext
+            kernel_x_end: the end point of init_datas
+        */
 
 		if (end < kernel_x_start) {
 			map.pfn = __phys_to_pfn(start);
