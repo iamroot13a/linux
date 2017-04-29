@@ -441,6 +441,10 @@ void __set_fixmap(enum fixed_addresses idx, phys_addr_t phys, pgprot_t prot)
 /*
  * Adjust the PMD section entries according to the CPU in use.
  */
+
+#if 0  /* @Iamroot: 2017.04.29 */
+		HW/linux pagetable properties 
+#endif /* @Iamroot  */
 static void __init build_mem_type_table(void)
 {
 	struct cachepolicy *cp;
