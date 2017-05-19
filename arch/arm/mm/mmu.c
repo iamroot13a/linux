@@ -794,10 +794,17 @@ static pte_t * __init arm_pte_alloc(pmd_t *pmd, unsigned long addr,
 {
 	if (pmd_none(*pmd)) {
 		pte_t *pte = alloc(PTE_HWTABLE_OFF + PTE_HWTABLE_SIZE);
+#if 0  /* @Iamroot: 2017.05.13 */
+                (512 * 4byte) + (512 * 4byte) 
+                 pte 에 메모리 할당을 해준다
+#endif /* @Iamroot  */
 		__pmd_populate(pmd, __pa(pte), prot);
 	}
 	BUG_ON(pmd_bad(*pmd));
 	return pte_offset_kernel(pmd, addr);
+#if 0  /* @Iamroot: 2017.05.13 */
+        aligned 된 pmd의 주소를 불러온다
+#endif /* @Iamroot  */
 }
 
 static pte_t * __init early_pte_alloc(pmd_t *pmd, unsigned long addr,
@@ -805,7 +812,8 @@ static pte_t * __init early_pte_alloc(pmd_t *pmd, unsigned long addr,
 {
 	return arm_pte_alloc(pmd, addr, prot, early_alloc);
 }
-
+//alloc_init_pte(pmd, addr, next,
+//        __phys_to_pfn(phys), type, alloc, ng);
 static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 				  unsigned long end, unsigned long pfn,
 				  const struct mem_type *type,
@@ -816,8 +824,16 @@ static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 	do {
 		set_pte_ext(pte, pfn_pte(pfn, __pgprot(type->prot_pte)),
 			    ng ? PTE_EXT_NG : 0);
+#if 0  /* @Iamroot: 2017.05.13 */
+                set_pte_ext의 2번째 인자가 linux pte 이기 때문에 
+                h/w pte와 linux pte가 서로 다른 부분 10~5,2~1 비트부문을 클리어 한후
+                다시 세팅한다
+#endif /* @Iamroot  */
 		pfn++;
 	} while (pte++, addr += PAGE_SIZE, addr != end);
+#if 0  /* @Iamroot: 2017.05.13 */
+        512 번 반복한다 
+#endif /* @Iamroot  */
 }
 
 static void __init __map_init_section(pmd_t *pmd, unsigned long addr,
@@ -838,15 +854,24 @@ static void __init __map_init_section(pmd_t *pmd, unsigned long addr,
 	 */
 	if (addr & SECTION_SIZE)
 		pmd++;
+#if 0  /* @Iamroot: 2017.05.13 */
+        pgd는 2Mb를 관리 그리고 PGD는 안에 둘로 나누어 1Mb씩 관리를 한다
+        이때 addr의 인덱스 수가 홀 수 일경우 pmd의 값을 1올려 
+        pgd의 인덱스를 올린다.
+#endif /* @Iamroot  */
 #endif
 	do {
 		*pmd = __pmd(phys | type->prot_sect | (ng ? PMD_SECT_nG : 0));
+#if 0  /* @Iamroot: 2017.05.13 */
+                pmd의 값을 mapping 한다
+#endif /* @Iamroot  */
 		phys += SECTION_SIZE;
 	} while (pmd++, addr += SECTION_SIZE, addr != end);
 
 	flush_pmd_entry(p);
 }
 
+//alloc_init_pmd(pud, addr, next, phys, type, alloc, ng);
 static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 				      unsigned long end, phys_addr_t phys,
 				      const struct mem_type *type,
@@ -869,6 +894,11 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		if (type->prot_sect &&
 				((addr | next | phys) & ~SECTION_MASK) == 0) {
 			__map_init_section(pmd, addr, next, phys, type, ng);
+#if 0  /* @Iamroot: 2017.05.13 */
+                        pgd에서 전체 1MB를 관리함
+                        pgd에서 1MB 전체를 관리해야 하기때문에 반드시 
+                        addr, next, phys가 전부 aligned 되어 있어야 함
+#endif /* @Iamroot  */
 		} else {
 			alloc_init_pte(pmd, addr, next,
 				       __phys_to_pfn(phys), type, alloc, ng);
@@ -877,6 +907,9 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		phys += next - addr;
 
 	} while (pmd++, addr = next, addr != end);
+#if 0  /* @Iamroot: 2017.05.13 */
+        2번 반복한다
+#endif /* @Iamroot  */
 }
 
 //		alloc_init_pud(pgd, addr, next, phys, type, alloc, ng);
@@ -886,10 +919,16 @@ static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
 				  void *(*alloc)(unsigned long sz), bool ng)
 {
 	pud_t *pud = pud_offset(pgd, addr);
+#if 0  /* @Iamroot: 2017.05.13 */
+        2 level 이기 때문에 pud == pgd
+#endif /* @Iamroot  */
 	unsigned long next;
 
 	do {
 		next = pud_addr_end(addr, end);
+#if 0  /* @Iamroot: 2017.05.13 */
+                end == next (2 level이기 때문에)
+#endif /* @Iamroot  */
 		alloc_init_pmd(pud, addr, next, phys, type, alloc, ng);
 		phys += next - addr;
 	} while (pud++, addr = next, addr != end);
@@ -999,6 +1038,10 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 	}
 
 	pgd = pgd_offset(mm, addr);
+#if 0  /* @Iamroot: 2017.05.13 */
+        pgd_offset에서는 mm에서 pgd의 시작주소와 addr이 위치한 pgd의 인덱스 번호를 구하여 
+        더한다 즉, addr이 pgd에서 맵핑된 주소를 구한다 
+#endif /* @Iamroot  */
 	end = addr + length;
     /*
         pgd: translation base address + offset
@@ -1007,7 +1050,9 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 	do {
         /* next cannot be over the end of pgd */
 		unsigned long next = pgd_addr_end(addr, end);
-
+#if 0  /* @Iamroot: 2017.05.13 */
+                addr에 2Mb 씩 더하여 next에 대입한다. 
+#endif /* @Iamroot  */
 		alloc_init_pud(pgd, addr, next, phys, type, alloc, ng);
 
 		phys += next - addr;
@@ -1572,6 +1617,9 @@ static void __init map_lowmem(void)
 			map.type = MT_MEMORY_RWX;
 
 			create_mapping(&map);
+#if 0  /* @Iamroot: 2017.05.13 */
+        다음주에 계속
+#endif /* @Iamroot  */
 		} else if (start >= kernel_x_end) {
 			map.pfn = __phys_to_pfn(start);
 			map.virtual = __phys_to_virt(start);

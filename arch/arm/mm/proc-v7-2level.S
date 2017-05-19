@@ -88,29 +88,57 @@ ENTRY(cpu_v7_set_pte_ext)
 
 	bic	r3, r1, #0x000003f0
 	bic	r3, r3, #PTE_TYPE_MASK
+#if 0  /* @Iamroot: 2017.05.13 */
+        r0에 r1을 저장(mapping)
+        r1에서 5~10번째 비트를 클리어 한후 r3에 저장한다
+        r3에서 1~2번째 비트를 클리어한다
+
+        r0 : pte : pte의 주소
+        r1 : pfn_pte(pfn, __pgprot(type->prot_pte)
+        r2 : ng ? PTE_EXT_NG : 0  -> 0 
+#endif /* @Iamroot  */
 	orr	r3, r3, r2
 	orr	r3, r3, #PTE_EXT_AP0 | 2
+#if 0  /* @Iamroot: 2017.05.13 */
+        read 또는 read/write 권한을 주기위해 EXT_AP0을 설정하고 
+        2차 테이블을 지원하기 위해 TABLE 비트를 설정한다. 
+#endif /* @Iamroot  */
 
 	tst	r1, #1 << 4
 	orrne	r3, r3, #PTE_EXT_TEX(1)
+#if 0  /* @Iamroot: 2017.05.13 */
+       r1의 4번째 비트가 1인 경우 첫번째 TEX 비트를 설정한다
+#endif /* @Iamroot  */
 
 	eor	r1, r1, #L_PTE_DIRTY
 	tst	r1, #L_PTE_RDONLY | L_PTE_DIRTY
 	orrne	r3, r3, #PTE_EXT_APX
-
+#if 0  /* @Iamroot: 2017.05.13 */
+        DIRTY비트가 없거나 RDONLY 비트가 있을경우 APX비트를 설정한다.
+#endif /* @Iamroot  */
 	tst	r1, #L_PTE_USER
 	orrne	r3, r3, #PTE_EXT_AP1
 
 	tst	r1, #L_PTE_XN
 	orrne	r3, r3, #PTE_EXT_XN
-
+#if 0  /* @Iamroot: 2017.05.13 */
+        L_PTE_USER와 L_PTE_XN가 설정 되어있을경우 AP1과 XN비트를 설정한다
+#endif /* @Iamroot  */
 	tst	r1, #L_PTE_YOUNG
 	tstne	r1, #L_PTE_VALID
 	eorne	r1, r1, #L_PTE_NONE
 	tstne	r1, #L_PTE_NONE
 	moveq	r3, #0
+#if 0  /* @Iamroot: 2017.05.13 */
+        pte의 L_PTE_YOUNG이 없거나 L_PTE_VALID(L_PTE_PRESENT)가 없거나 
+        L_PTE_NONE이 있으면 r3을 모두 0으로 변경
+#endif /* @Iamroot  */
 
  ARM(	str	r3, [r0, #2048]! )
+#if 0  /* @Iamroot: 2017.05.13 */
+    r0에 저장되어 있는 주소는 linux pte의 주소이며 현재 r3는 h/w pte 이므로 
+    linux pte 주소에 2048(512 * 4) 만큼 더하여 h/w pte의 주소에 r3를 저장 한다 
+#endif /* @Iamroot  */
  THUMB(	add	r0, r0, #2048 )
  THUMB(	str	r3, [r0] )
 	ALT_SMP(W(nop))
