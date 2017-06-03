@@ -47,6 +47,10 @@ struct cma *dma_contiguous_default_area;
  * should use cma= kernel parameter.
  */
 static const phys_addr_t size_bytes = (phys_addr_t)CMA_SIZE_MBYTES * SZ_1M;
+#if 0  /* @Iamroot: 2017.04.15 */
+현재 CMA_SIZE_MBYTES = 5
+SZ_1M = 1M
+#endif /* @Iamroot  */
 static phys_addr_t size_cmdline = -1;
 static phys_addr_t base_cmdline;
 static phys_addr_t limit_cmdline;
@@ -67,6 +71,11 @@ static int __init early_cma(char *p)
 	return 0;
 }
 early_param("cma", early_cma);
+#if 0  /* @Iamroot: 2017.04.15 */
+dtb 안에 chosen이란 노드안에 bootargs 란 attribute의 내용중에 cma라는 것이 있으면 이 함수가 
+불린다
+(현재는 없으므로 pass한다)
+#endif /* @Iamroot  */
 
 #ifdef CONFIG_CMA_SIZE_PERCENTAGE
 
@@ -113,6 +122,9 @@ void __init dma_contiguous_reserve(phys_addr_t limit)
 
 	pr_debug("%s(limit %08lx)\n", __func__, (unsigned long)limit);
 
+#if 0  /* @Iamroot: 2017.04.15 */
+        elary_cma 함수가 불려지지 않았기 때문에 size_cmdline은 -1이므로 else로 분기한다
+#endif /* @Iamroot  */
 	if (size_cmdline != -1) {
 		selected_size = size_cmdline;
 		selected_base = base_cmdline;
@@ -122,6 +134,10 @@ void __init dma_contiguous_reserve(phys_addr_t limit)
 	} else {
 #ifdef CONFIG_CMA_SIZE_SEL_MBYTES
 		selected_size = size_bytes;
+#if 0  /* @Iamroot: 2017.04.15 */
+                현재 CONFIG_CMA_SIZE_SEL_MBYTES가 defined 되어 있음 
+                size_bytes : 5M
+#endif /* @Iamroot  */
 #elif defined(CONFIG_CMA_SIZE_SEL_PERCENTAGE)
 		selected_size = cma_early_percent_memory();
 #elif defined(CONFIG_CMA_SIZE_SEL_MIN)
@@ -159,6 +175,11 @@ void __init dma_contiguous_reserve(phys_addr_t limit)
  * If @fixed is true, reserve contiguous area at exactly @base.  If false,
  * reserve in range from @base to @limit.
  */
+#if 0  /* @Iamroot: 2017.04.15 */
+dma_contiguous_reserve_area(selected_size, selected_base,
+                            selected_limit, &dma_contiguous_default_area,
+                            fixed(false));
+#endif /* @Iamroot  */
 int __init dma_contiguous_reserve_area(phys_addr_t size, phys_addr_t base,
 				       phys_addr_t limit, struct cma **res_cma,
 				       bool fixed)
@@ -172,6 +193,9 @@ int __init dma_contiguous_reserve_area(phys_addr_t size, phys_addr_t base,
 	/* Architecture specific contiguous memory fixup. */
 	dma_contiguous_early_fixup(cma_get_base(*res_cma),
 				cma_get_size(*res_cma));
+#if 0  /* @Iamroot: 2017.04.15 */
+        cma 영역에 해당 dma 추가
+#endif /* @Iamroot  */
 
 	return 0;
 }

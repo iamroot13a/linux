@@ -118,6 +118,10 @@ static struct cachepolicy cache_policies[] __initdata = {
 		.pmd		= PMD_SECT_WBWA,
 		.pte		= L_PTE_MT_WRITEALLOC,
 		.pte_s2		= s2_policy(L_PTE_S2_MT_WRITEBACK),
+	/*@Iamroot 170422
+	 * L_PTE : Linux PTE
+	 */
+
 	}
 };
 
@@ -437,6 +441,10 @@ void __set_fixmap(enum fixed_addresses idx, phys_addr_t phys, pgprot_t prot)
 /*
  * Adjust the PMD section entries according to the CPU in use.
  */
+
+#if 0  /* @Iamroot: 2017.04.29 */
+		HW/linux pagetable properties 
+#endif /* @Iamroot  */
 static void __init build_mem_type_table(void)
 {
 	struct cachepolicy *cp;
@@ -469,6 +477,10 @@ static void __init build_mem_type_table(void)
 		if (!(initial_pmd_value & PMD_SECT_S)) {
 			pr_warn("Forcing shared mappings for SMP\n");
 			initial_pmd_value |= PMD_SECT_S;
+#if 0  /* @Iamroot: 2017.04.15 */
+                        SMP에서 각 CPU가 해당 page를 공유할수 있도록 S bit를 활성화 함
+                        p.1329
+#endif /* @Iamroot  */
 		}
 	}
 
@@ -516,7 +528,10 @@ static void __init build_mem_type_table(void)
 			mem_types[MT_DEVICE_NONSHARED].prot_sect |= PMD_SECT_XN;
 			mem_types[MT_DEVICE_CACHED].prot_sect |= PMD_SECT_XN;
 			mem_types[MT_DEVICE_WC].prot_sect |= PMD_SECT_XN;
-
+#if 0  /* @Iamroot: 2017.04.15 */
+                        xsc3를 제외한 나머지에서는 해당 디바이스 메모리를 사용할수 없도록
+                        설정한다
+#endif /* @Iamroot  */
 			/* Also setup NX memory mapping */
 			mem_types[MT_MEMORY_RW].prot_sect |= PMD_SECT_XN;
 		}
@@ -531,6 +546,14 @@ static void __init build_mem_type_table(void)
 			mem_types[MT_DEVICE].prot_sect |= PMD_SECT_TEX(1);
 			mem_types[MT_DEVICE_NONSHARED].prot_sect |= PMD_SECT_TEX(1);
 			mem_types[MT_DEVICE_WC].prot_sect |= PMD_SECT_BUFFERABLE;
+#if 0  /* @Iamroot: 2017.04.15 */
+			S : Sharable bit
+			X : TEX[0] bit
+			C : Cacheable bit
+			B : Bufferable bit
+			mem_types table : overhead를 줄이기 위해 memory type's property을 미리 설정한다.
+			(shared, nonshared, write combine)
+#endif /* @Iamroot  */
 		} else if (cpu_is_xsc3()) {
 			/*
 			 * For Xscale3,
@@ -566,9 +589,17 @@ static void __init build_mem_type_table(void)
 	 */
 	cp = &cache_policies[cachepolicy];
 	vecs_pgprot = kern_pgprot = user_pgprot = cp->pte;
+#if 0  /* @Iamroot: 2017.04.15 */
+vecs : vectors
+		   vectors. kernel, user property를 L_PTA_WRITE_ALLOC로 설정
+#endif /* @Iamroot  */
 	s2_pgprot = cp->pte_s2;
 	hyp_device_pgprot = mem_types[MT_DEVICE].prot_pte;
 	s2_device_pgprot = mem_types[MT_DEVICE].prot_pte_s2;
+	/*@Iamroot 170422
+	 * s2는 stage2 약어로 hypervisor에서 구동되는 mmu table 중 하나다.
+	 * app <-> stage1 mmu <-> OS <-> stage2 mmu <-> phys memory
+	 */
 
 #ifndef CONFIG_ARM_LPAE
 	/*
@@ -587,6 +618,10 @@ static void __init build_mem_type_table(void)
 		(read_cpuid_ext(CPUID_EXT_MMFR0) & 0xF) >= 4) {
 		user_pmd_table |= PMD_PXNTABLE;
 	}
+	/*@Iamroot 170422
+	 * kernel모드일 때 user영역의 코드를 실행못하게 설정
+	 */
+
 #endif
 
 	/*
@@ -601,12 +636,21 @@ static void __init build_mem_type_table(void)
 		mem_types[MT_ROM].prot_sect |= PMD_SECT_APX|PMD_SECT_AP_WRITE;
 		mem_types[MT_MINICLEAN].prot_sect |= PMD_SECT_APX|PMD_SECT_AP_WRITE;
 		mem_types[MT_CACHECLEAN].prot_sect |= PMD_SECT_APX|PMD_SECT_AP_WRITE;
+	/*@Iamroot 170422
+	 * MT : Memory Type
+	 * MT_ROM을 Read-only, only at PL1 or higher로 설정
+	 * MINCLEAN과 CACHECLEAN은 Cache Flush Region 아키텍처에 사용
+	 */
+
 #endif
 
 		/*
 		 * If the initial page tables were created with the S bit
 		 * set, then we need to do the same here for the same
 		 * reasons given in early_cachepolicy().
+		 */
+		/*@Iamroot 170422
+		 *다음 시간에...
 		 */
 		if (initial_pmd_value & PMD_SECT_S) {
 			user_pgprot |= L_PTE_SHARED;
@@ -750,10 +794,17 @@ static pte_t * __init arm_pte_alloc(pmd_t *pmd, unsigned long addr,
 {
 	if (pmd_none(*pmd)) {
 		pte_t *pte = alloc(PTE_HWTABLE_OFF + PTE_HWTABLE_SIZE);
+#if 0  /* @Iamroot: 2017.05.13 */
+                (512 * 4byte) + (512 * 4byte) 
+                 pte 에 메모리 할당을 해준다
+#endif /* @Iamroot  */
 		__pmd_populate(pmd, __pa(pte), prot);
 	}
 	BUG_ON(pmd_bad(*pmd));
 	return pte_offset_kernel(pmd, addr);
+#if 0  /* @Iamroot: 2017.05.13 */
+        aligned 된 pmd의 주소를 불러온다
+#endif /* @Iamroot  */
 }
 
 static pte_t * __init early_pte_alloc(pmd_t *pmd, unsigned long addr,
@@ -761,7 +812,8 @@ static pte_t * __init early_pte_alloc(pmd_t *pmd, unsigned long addr,
 {
 	return arm_pte_alloc(pmd, addr, prot, early_alloc);
 }
-
+//alloc_init_pte(pmd, addr, next,
+//        __phys_to_pfn(phys), type, alloc, ng);
 static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 				  unsigned long end, unsigned long pfn,
 				  const struct mem_type *type,
@@ -772,8 +824,16 @@ static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 	do {
 		set_pte_ext(pte, pfn_pte(pfn, __pgprot(type->prot_pte)),
 			    ng ? PTE_EXT_NG : 0);
+#if 0  /* @Iamroot: 2017.05.13 */
+                set_pte_ext의 2번째 인자가 linux pte 이기 때문에 
+                h/w pte와 linux pte가 서로 다른 부분 10~5,2~1 비트부문을 클리어 한후
+                다시 세팅한다
+#endif /* @Iamroot  */
 		pfn++;
 	} while (pte++, addr += PAGE_SIZE, addr != end);
+#if 0  /* @Iamroot: 2017.05.13 */
+        512 번 반복한다 
+#endif /* @Iamroot  */
 }
 
 static void __init __map_init_section(pmd_t *pmd, unsigned long addr,
@@ -794,15 +854,24 @@ static void __init __map_init_section(pmd_t *pmd, unsigned long addr,
 	 */
 	if (addr & SECTION_SIZE)
 		pmd++;
+#if 0  /* @Iamroot: 2017.05.13 */
+        pgd는 2Mb를 관리 그리고 PGD는 안에 둘로 나누어 1Mb씩 관리를 한다
+        이때 addr의 인덱스 수가 홀 수 일경우 pmd의 값을 1올려 
+        pgd의 인덱스를 올린다.
+#endif /* @Iamroot  */
 #endif
 	do {
 		*pmd = __pmd(phys | type->prot_sect | (ng ? PMD_SECT_nG : 0));
+#if 0  /* @Iamroot: 2017.05.13 */
+                pmd의 값을 mapping 한다
+#endif /* @Iamroot  */
 		phys += SECTION_SIZE;
 	} while (pmd++, addr += SECTION_SIZE, addr != end);
 
 	flush_pmd_entry(p);
 }
 
+//alloc_init_pmd(pud, addr, next, phys, type, alloc, ng);
 static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 				      unsigned long end, phys_addr_t phys,
 				      const struct mem_type *type,
@@ -825,6 +894,11 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		if (type->prot_sect &&
 				((addr | next | phys) & ~SECTION_MASK) == 0) {
 			__map_init_section(pmd, addr, next, phys, type, ng);
+#if 0  /* @Iamroot: 2017.05.13 */
+                        pgd에서 전체 1MB를 관리함
+                        pgd에서 1MB 전체를 관리해야 하기때문에 반드시 
+                        addr, next, phys가 전부 aligned 되어 있어야 함
+#endif /* @Iamroot  */
 		} else {
 			alloc_init_pte(pmd, addr, next,
 				       __phys_to_pfn(phys), type, alloc, ng);
@@ -833,18 +907,28 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		phys += next - addr;
 
 	} while (pmd++, addr = next, addr != end);
+#if 0  /* @Iamroot: 2017.05.13 */
+        2번 반복한다
+#endif /* @Iamroot  */
 }
 
+//		alloc_init_pud(pgd, addr, next, phys, type, alloc, ng);
 static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
 				  unsigned long end, phys_addr_t phys,
 				  const struct mem_type *type,
 				  void *(*alloc)(unsigned long sz), bool ng)
 {
 	pud_t *pud = pud_offset(pgd, addr);
+#if 0  /* @Iamroot: 2017.05.13 */
+        2 level 이기 때문에 pud == pgd
+#endif /* @Iamroot  */
 	unsigned long next;
 
 	do {
 		next = pud_addr_end(addr, end);
+#if 0  /* @Iamroot: 2017.05.13 */
+                end == next (2 level이기 때문에)
+#endif /* @Iamroot  */
 		alloc_init_pmd(pud, addr, next, phys, type, alloc, ng);
 		phys += next - addr;
 	} while (pud++, addr = next, addr != end);
@@ -911,7 +995,7 @@ static void __init create_36bit_mapping(struct mm_struct *mm,
 	} while (addr != end);
 }
 #endif	/* !CONFIG_ARM_LPAE */
-
+//early_alloc
 static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 				    void *(*alloc)(unsigned long sz),
 				    bool ng)
@@ -934,8 +1018,18 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 #endif
 
 	addr = md->virtual & PAGE_MASK;
+    /* ex) addr = 0xabcd1234 => addr = 0xabcd1000 */
 	phys = __pfn_to_phys(md->pfn);
+    /* phys format = 0xabcd1000 */
 	length = PAGE_ALIGN(md->length + (md->virtual & ~PAGE_MASK));
+    /*
+        Ex)
+        md->length : 10K,
+        page_offset(2K)
+        md->length + page_offset = 12K
+
+        So, 3 pages should be mapped
+    */
 
 	if (type->prot_l1 == 0 && ((addr | phys | length) & ~SECTION_MASK)) {
 		pr_warn("BUG: map for 0x%08llx at 0x%08lx can not be mapped using pages, ignoring.\n",
@@ -944,10 +1038,21 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 	}
 
 	pgd = pgd_offset(mm, addr);
+#if 0  /* @Iamroot: 2017.05.13 */
+        pgd_offset에서는 mm에서 pgd의 시작주소와 addr이 위치한 pgd의 인덱스 번호를 구하여 
+        더한다 즉, addr이 pgd에서 맵핑된 주소를 구한다 
+#endif /* @Iamroot  */
 	end = addr + length;
+    /*
+        pgd: translation base address + offset
+        end: end virtual address
+    */
 	do {
+        /* next cannot be over the end of pgd */
 		unsigned long next = pgd_addr_end(addr, end);
-
+#if 0  /* @Iamroot: 2017.05.13 */
+                addr에 2Mb 씩 더하여 next에 대입한다. 
+#endif /* @Iamroot  */
 		alloc_init_pud(pgd, addr, next, phys, type, alloc, ng);
 
 		phys += next - addr;
@@ -1487,6 +1592,7 @@ static void __init map_lowmem(void)
 
 	/* Map all the lowmem memory banks. */
 	for_each_memblock(memory, reg) {
+        /* "reg" variable is assigned from every single memblock of memory*/
 		phys_addr_t start = reg->base;
 		phys_addr_t end = start + reg->size;
 		struct map_desc map;
@@ -1499,6 +1605,11 @@ static void __init map_lowmem(void)
 		if (start >= end)
 			break;
 
+        /*
+            kernel_x_start: the start point of _stext
+            kernel_x_end: the end point of init_datas
+        */
+
 		if (end < kernel_x_start) {
 			map.pfn = __phys_to_pfn(start);
 			map.virtual = __phys_to_virt(start);
@@ -1506,6 +1617,9 @@ static void __init map_lowmem(void)
 			map.type = MT_MEMORY_RWX;
 
 			create_mapping(&map);
+#if 0  /* @Iamroot: 2017.05.13 */
+        다음주에 계속
+#endif /* @Iamroot  */
 		} else if (start >= kernel_x_end) {
 			map.pfn = __phys_to_pfn(start);
 			map.virtual = __phys_to_virt(start);

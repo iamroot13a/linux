@@ -584,6 +584,9 @@ static inline void flush_pmd_entry(void *pmd)
 
 	if (tlb_flag(TLB_WB))
 		dsb(ishst);
+#if 0  /* @Iamroot: 2017.05.13 */
+        PMD를 새로 수정하였으므로 TLB에서 PMD엔트리를 삭제한다
+#endif /* @Iamroot  */
 }
 
 static inline void clean_pmd_entry(void *pmd)

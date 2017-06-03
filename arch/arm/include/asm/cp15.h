@@ -56,6 +56,9 @@ static inline unsigned long get_cr(void)
 	unsigned long val;
 	asm("mrc p15, 0, %0, c1, c0, 0	@ get CR" : "=r" (val) : : "cc");
 	return val;
+#if 0  /* @Iamroot: 2017.04.15 */
+        SCTLR의 값을 val에 넣고 리턴
+#endif /* @Iamroot  */
 }
 
 static inline void set_cr(unsigned long val)

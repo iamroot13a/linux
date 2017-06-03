@@ -103,10 +103,14 @@ static int __init __reserved_mem_alloc_size(unsigned long node,
 	int nomap;
 	int ret;
 
+
 	prop = of_get_flat_dt_prop(node, "size", &len);
 	if (!prop)
 		return -EINVAL;
-
+#if 0  /* @Iamroot: 2017.04.01 */
+		DTB에서 size 키워드가 있다면 크기(len)을 얻어온다.
+		크기(len)는 byte단위이다.
+#endif /* @Iamroot  */
 	if (len != dt_root_size_cells * sizeof(__be32)) {
 		pr_err("Reserved memory: invalid size property in '%s' node.\n",
 				uname);
@@ -114,8 +118,14 @@ static int __init __reserved_mem_alloc_size(unsigned long node,
 	}
 	size = dt_mem_next_cell(dt_root_size_cells, &prop);
 
+#if 0  /* @Iamroot: 2017.04.01 */
+		현재 node의 size라는 prop의 값을 가져온다.
+#endif /* @Iamroot  */
 	nomap = of_get_flat_dt_prop(node, "no-map", NULL) != NULL;
 
+#if 0  /* @Iamroot: 2017.04.01 */
+		해당 node의 no-map이라는 prop의 존재 유무를 확인
+#endif /* @Iamroot  */
 	prop = of_get_flat_dt_prop(node, "alignment", &len);
 	if (prop) {
 		if (len != dt_root_addr_cells * sizeof(__be32)) {
@@ -226,6 +236,10 @@ static void __init __rmem_check_for_overlap(void)
 
 	sort(reserved_mem, reserved_mem_count, sizeof(reserved_mem[0]),
 	     __rmem_cmp, NULL);
+
+#if 0  /* @Iamroot: 2017.04.01 */
+			
+#endif /* @Iamroot  */
 	for (i = 0; i < reserved_mem_count - 1; i++) {
 		struct reserved_mem *this, *next;
 
