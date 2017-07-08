@@ -1178,6 +1178,17 @@ static struct vm_struct *vmlist __initdata;
  *
  * DO NOT USE THIS FUNCTION UNLESS YOU KNOW WHAT YOU'RE DOING.
  */
+
+
+#if 0  /* @Iamroot: 2017.07.08 */
+	
+	BUG_ON : 잘못된 값(조건)일때 failure message broadcast
+    vmap_initialized = false 일때 BUG 발생 X
+	-> 지금은 booting중이라  Vmalloc 함수 실행불가능하므로.
+
+#endif /* @Iamroot  */
+
+
 void __init vm_area_add_early(struct vm_struct *vm)
 {
 	struct vm_struct *tmp, **p;

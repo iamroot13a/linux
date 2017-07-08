@@ -1638,6 +1638,11 @@ void __init_memblock memblock_trim_memory(phys_addr_t align)
 
 void __init_memblock memblock_set_current_limit(phys_addr_t limit)
 {
+#if 0  /* @Iamroot: 2017.06.03 */
+    set the "current_list" depends on case
+    1. if limit gets over the end_of_kernel, limit should be arm_lowmem_limit
+    2. if limit do not over the end of kernel, it has the end of corresponding memblock region
+#endif /* @Iamroot  */
 	memblock.current_limit = limit;
 }
 

@@ -833,6 +833,8 @@ static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 #if 0  /* @Iamroot: 2017.05.13 */
         512 번 반복한다 
+        while문에서 ,를 사용할 경우 가장 마지막 항목이 조건문이 된다
+        참고 : https://stackoverflow.com/questions/41611557/c-programming-comma-operator-within-while-loop
 #endif /* @Iamroot  */
 }
 
@@ -1069,6 +1071,9 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
  */
 static void __init create_mapping(struct map_desc *md)
 {
+#if 0  /* @Iamroot: 2017.06.03 */
+        Assign the proper value to PGD and PTE through __create_mapping()
+#endif /* @Iamroot  */
 	if (md->virtual != vectors_base() && md->virtual < TASK_SIZE) {
 		pr_warn("BUG: not creating mapping for 0x%08llx at 0x%08lx in user region\n",
 			(long long)__pfn_to_phys((u64)md->pfn), md->virtual);
@@ -1082,6 +1087,9 @@ static void __init create_mapping(struct map_desc *md)
 			(long long)__pfn_to_phys((u64)md->pfn), md->virtual);
 	}
 
+#if 0  /* @Iamroot: 2017.06.03 */
+    TODO: HAVE TO WATCH "early_alloc", memblock allocation routine.
+#endif /* @Iamroot  */
 	__create_mapping(&init_mm, md, early_alloc, false);
 }
 
@@ -1100,6 +1108,16 @@ void __init create_mapping_late(struct mm_struct *mm, struct map_desc *md,
 /*
  * Create the architecture specific mappings
  */
+
+#if 0  /* @Iamroot: 2017.07.08 */
+	문씨 블로그 참고 : 
+	요청 받은 맵 정보 배열 수 만큼 static_vm 구조체 배열로 reserve memblock에 할당 받는다. 
+	그리고 요청 맵 영역들을 페이지 테이블에 매핑 구성하고 
+	요청 맵 영역 각각을 관리하는 구조체 엔트리인 static_vm을 구성하고 
+	그 엔트리들을 static_vmlist에 추가한다.
+
+#endif /* @Iamroot  */
+
 void __init iotable_init(struct map_desc *io_desc, int nr)
 {
 	struct map_desc *md;
@@ -1108,11 +1126,44 @@ void __init iotable_init(struct map_desc *io_desc, int nr)
 
 	if (!nr)
 		return;
+#if 0  /* @Iamroot: 2017.07.08 */
+	
+	svm 구조체에 early_alloc_aligned함수 이용해 할당, size내 값은 모두 0
+	-> 초기화한 영역 할당
+
+#endif /* @Iamroot  */
 
 	svm = early_alloc_aligned(sizeof(*svm) * nr, __alignof__(*svm));
 
+#if 0  /* @Iamroot: 2017.07.08 */
+    
+	iotable_init(&map,1) : *io_desc = map_desc map&, nr = 1 받아옴
+	결국 io_desc 는 map_desc와 동일
+
+    nr횟수만큼(맵 요청수) md++, nr--
+	create_mapping(md) : 해당하는 init_page_table값 할당 
+	자세한 사항은 오른쪽 주소참고 : http://jake.dothome.co.kr/create_mapping/
+
+#endif /* @Iamroot  */
+
 	for (md = io_desc; nr; md++, nr--) {
 		create_mapping(md);
+
+#if 0  /* @Iamroot: 2017.07.08 */
+
+	문씨 블로그 참고
+	flags = VM_IOREMAP | VM_ARM_STATIC_MAPPING | VM_ARM_MTYPE(md->type); 
+	IO 리매핑 속성, static 매핑 속성 및 메모리 타입을 플래그에 설정한다.
+
+    ** VM_IOREMAP (web : stackoverflow) **
+    VM_IOREMAP means this virtual memory region is created by ioremap(), 
+	* ususally * ( but * not limited to *) to map a I/O memory region 
+	( featured by its physical address ) of a hardware device ( like a PCI device) 
+	into kernel virtual address range, so we can access the I/O memory by simple read / write. 
+
+    VM : map_desc(io_desc 속성)
+	svm : vm_list
+#endif /* @Iamroot  */
 
 		vm = &svm->vm;
 		vm->addr = (void *)(md->virtual & PAGE_MASK);
@@ -1424,6 +1475,9 @@ static inline void prepare_page_table(void)
 	for (addr = __phys_to_virt(end);
 	     addr < VMALLOC_START; addr += PMD_SIZE)
 		pmd_clear(pmd_off_k(addr));
+#if 0  /* @Iamroot: 2017.06.03 */
+        각 메모리 영역을 클리어 한다
+#endif /* @Iamroot  */
 }
 
 #ifdef CONFIG_ARM_LPAE
@@ -1589,7 +1643,9 @@ static void __init map_lowmem(void)
 	phys_addr_t kernel_x_start = round_down(__pa(_stext), SECTION_SIZE);
 #endif
 	phys_addr_t kernel_x_end = round_up(__pa(__init_end), SECTION_SIZE);
-
+#if 0  /* @Iamroot: 2017.06.03 */
+        코드영역까지를 범위로 잡느다(데이터 영역 전까지)
+#endif /* @Iamroot  */
 	/* Map all the lowmem memory banks. */
 	for_each_memblock(memory, reg) {
         /* "reg" variable is assigned from every single memblock of memory*/
@@ -1604,6 +1660,9 @@ static void __init map_lowmem(void)
 			end = arm_lowmem_limit;
 		if (start >= end)
 			break;
+#if 0  /* @Iamroot: 2017.06.03 */
+                memblock 중 arm_lowmem_limit 이하에 있는 memblock들만 아래의 작업을 수행한다
+#endif /* @Iamroot  */
 
         /*
             kernel_x_start: the start point of _stext
@@ -1617,9 +1676,7 @@ static void __init map_lowmem(void)
 			map.type = MT_MEMORY_RWX;
 
 			create_mapping(&map);
-#if 0  /* @Iamroot: 2017.05.13 */
-        다음주에 계속
-#endif /* @Iamroot  */
+
 		} else if (start >= kernel_x_end) {
 			map.pfn = __phys_to_pfn(start);
 			map.virtual = __phys_to_virt(start);
@@ -1629,6 +1686,10 @@ static void __init map_lowmem(void)
 			create_mapping(&map);
 		} else {
 			/* This better cover the entire kernel */
+#if 0  /* @Iamroot: 2017.06.03 */
+    create mapping except the region of kernel memory
+    in below two if statements
+#endif /* @Iamroot  */
 			if (start < kernel_x_start) {
 				map.pfn = __phys_to_pfn(start);
 				map.virtual = __phys_to_virt(start);

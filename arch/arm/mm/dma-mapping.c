@@ -460,7 +460,23 @@ void __init dma_contiguous_early_fixup(phys_addr_t base, unsigned long size)
 
 void __init dma_contiguous_remap(void)
 {
-	int i;
+#if 0  /* @Iamroot: 2017.06.03 */
+    To be continue, from here.
+#endif /* @Iamroot  */
+
+#if 0  /* @Iamroot: 2017.07.08 */
+	
+	문씨 블로그 참고 : http://jake.dothome.co.kr/dma_contiguous_remap/
+	setup_arch() -> arm_memblock_init()  ->  dma_contiguous_reserve() 함수를 통해 reserve된 영역들은
+	CMA for DMA 용도의 메모리로 이 영역들을 순서대로 읽어 IO 매핑을 위해 다음과 같은 작업을 한다.
+
+ 	for문 : physical address 시작, 끝점 지정 
+	end > arm_lowmem_limit일때 arm_lowmem_limit을 end로 지정
+	start address >= end 일때 mapping 하지않고 사용 X
+	
+#endif /* @Iamroot  */
+
+int i;
 	for (i = 0; i < dma_mmu_remap_num; i++) {
 		phys_addr_t start = dma_mmu_remap[i].base;
 		phys_addr_t end = start + dma_mmu_remap[i].size;
@@ -471,6 +487,12 @@ void __init dma_contiguous_remap(void)
 			end = arm_lowmem_limit;
 		if (start >= end)
 			continue;
+#if 0  /* @Iamroot: 2017.07.08 */
+
+	start address의 physical frame number 불러옴
+    start address의 virtual address 불러옴
+
+#endif /* @Iamroot  */
 
 		map.pfn = __phys_to_pfn(start);
 		map.virtual = __phys_to_virt(start);
@@ -486,7 +508,17 @@ void __init dma_contiguous_remap(void)
 		 * (even though they may be rare) can not cause any problems,
 		 * and ensures that this code is architecturally compliant.
 		 */
-		for (addr = __phys_to_virt(start); addr < __phys_to_virt(end);
+
+#if 0  /* @Iamroot: 2017.07.08 */
+
+	PMD size만큼  start~end까지 clear
+	pmd_off_k 함수 : 해당 offset 주소 획득
+	pmd_clear함수 : 2EA PMD clear (2개 PMD당- 1개 PGD 매칭됨)
+
+
+#endif /* @Iamroot  */
+
+	for (addr = __phys_to_virt(start); addr < __phys_to_virt(end);
 		     addr += PMD_SIZE)
 			pmd_clear(pmd_off_k(addr));
 
