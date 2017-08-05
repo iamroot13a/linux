@@ -1072,7 +1072,7 @@ static void __init __create_mapping(struct mm_struct *mm, struct map_desc *md,
 static void __init create_mapping(struct map_desc *md)
 {
 #if 0  /* @Iamroot: 2017.06.03 */
-        Assign the proper value to PGD and PTE through __create_mapping()
+    Assign the proper value to PGD and PTE through __create_mapping()
 #endif /* @Iamroot  */
 	if (md->virtual != vectors_base() && md->virtual < TASK_SIZE) {
 		pr_warn("BUG: not creating mapping for 0x%08llx at 0x%08lx in user region\n",
@@ -1818,16 +1818,33 @@ static void __init early_fixmap_shutdown(void)
 {
 	int i;
 	unsigned long va = fix_to_virt(__end_of_permanent_fixed_addresses - 1);
+#if 0  /* @Iamroot: 2017.08.05 */
+    url of explaination for fixmap : https://0xax.gitbooks.io/linux-insides/content/mm/linux-mm-2.html
+    Get a address of first page frame to 'va' variable
+#endif /* @Iamroot  */
 
+#if 0  /* @Iamroot: 2017.08.05 */
+    clear the pmd of upper va and also flush corresponding area of va
+#endif /* @Iamroot  */
 	pte_offset_fixmap = pte_offset_late_fixmap;
 	pmd_clear(fixmap_pmd(va));
 	local_flush_tlb_kernel_page(va);
 
+#if 0  /* @Iamroot: 2017.08.05 */
+    __end_of_permanent_fixed_addresses is set 1.
+#endif /* @Iamroot  */
 	for (i = 0; i < __end_of_permanent_fixed_addresses; i++) {
 		pte_t *pte;
 		struct map_desc map;
 
+#if 0  /* @Iamroot: 2017.08.05 */
+    i == 0, get an address mapped in fixmap area.
+    map.virtual = va
+#endif /* @Iamroot  */
 		map.virtual = fix_to_virt(i);
+#if 0  /* @Iamroot: 2017.08.05 */
+    Get a linux pte mapping to upper fixmap address
+#endif /* @Iamroot  */
 		pte = pte_offset_early_fixmap(pmd_off_k(map.virtual), map.virtual);
 
 		/* Only i/o device mappings are supported ATM */
@@ -1839,6 +1856,10 @@ static void __init early_fixmap_shutdown(void)
 		map.type = MT_DEVICE;
 		map.length = PAGE_SIZE;
 
+#if 0  /* @Iamroot: 2017.08.05 */
+    1. create page table mapping
+    2. memory mapping to systemcal global variable(init_mm)
+#endif /* @Iamroot  */
 		create_mapping(&map);
 	}
 }
@@ -1856,6 +1877,7 @@ void __init paging_init(const struct machine_desc *mdesc)
 	map_lowmem();
 	memblock_set_current_limit(arm_lowmem_limit);
 	dma_contiguous_remap();
+    // Why this function developer named like sucks about 'shutdown'?
 	early_fixmap_shutdown();
 	devicemaps_init(mdesc);
 	kmap_init();

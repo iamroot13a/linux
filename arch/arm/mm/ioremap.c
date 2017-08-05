@@ -89,8 +89,6 @@ struct static_vm *find_static_vm_vaddr(void *vaddr)
 
 	vm_area_add_early() : vmlist에 vm(static_vm안에 존재하는 vm) 추가하는 함수
 	list_for_each_entry : &static_vmlist 에 svm 추가
-	                      -> 
-    다음주에 계속.
 #endif /* @Iamroot  */
 
 
@@ -104,6 +102,9 @@ void __init add_static_vm_early(struct static_vm *svm)
 	vm_area_add_early(vm);
 	vaddr = vm->addr;
 
+#if 0  /* @Iamroot: 2017.08.05 */
+    Add static memory areas to static_vmlist variable
+#endif /* @Iamroot  */
 	list_for_each_entry(curr_svm, &static_vmlist, list) {
 		vm = &curr_svm->vm;
 
