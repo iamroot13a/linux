@@ -1225,6 +1225,19 @@ static void __init fill_pmd_gaps(void)
 		if (addr < next)
 			continue;
 
+#if 0  /* @Iamroot: 2017.08.26 */
+
+	vector page size : 8KB, 4KB씩  pair -> 항상 짝을 이뤄야 함
+
+	홀수 section이 비었을때의 시작 주소를 가져와서 
+	홀수 section이 비어있는 마지막 주소를  탐색 
+	-> 처음~마지막 주소의 홀수 section을 채운다
+	
+    next = (addr + PMD_SIZE - 1) & PMD_MASK;
+	-> 현재 매핑한 주소의 pmd 크기(2MB)만큼 round up한 주소이상을 찾게함
+
+#endif /* @Iamroot  */
+
 		/*
 		 * Check if this vm starts on an odd section boundary.
 		 * If so and the first section entry for this PMD is free
@@ -1536,6 +1549,14 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 	/*
 	 * Clear page table except top pmd used by early fixmaps
 	 */
+	
+#if 0  /* @Iamroot: 2017.08.26 */
+	VMALLOC_START = HIGHMEM + 8MB
+	VMALLOC_START ~ FIXADDR_TOP까지 초기화(PMD_SIZE = 1MB 단위로 초기화)
+
+    pmd_clear() : pmd의 해당 entry 초기화 	
+#endif /* @Iamroot  */
+	 
 	for (addr = VMALLOC_START; addr < (FIXADDR_TOP & PMD_MASK); addr += PMD_SIZE)
 		pmd_clear(pmd_off_k(addr));
 
@@ -1574,6 +1595,14 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 	 * location (0xffff0000).  If we aren't using high-vectors, also
 	 * create a mapping at the low-vectors virtual address.
 	 */
+
+#if 0  /* @Iamroot: 2017.08.26 */
+	
+	vectors의 VA to PA로 mapping & PA를 page frame number로 mapping
+	KUSER_HELPERS not define -> low_vector만 사용
+
+#endif /* @Iamroot  */
+
 	map.pfn = __phys_to_pfn(virt_to_phys(vectors));
 	map.virtual = 0xffff0000;
 	map.length = PAGE_SIZE;
@@ -1584,12 +1613,28 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 #endif
 	create_mapping(&map);
 
+
+#if 0  /* @Iamroot: 2017.08.26 */
+
+	high_vector를 사용하지 않기 때문에
+	low_vector X 2 만큼 map.length 할당
+
+#endif /* @Iamroot  */
+
+
 	if (!vectors_high()) {
 		map.virtual = 0;
 		map.length = PAGE_SIZE * 2;
 		map.type = MT_LOW_VECTORS;
 		create_mapping(&map);
 	}
+
+#if 0  /* @Iamroot: 2017.08.26 */
+
+	vector의 2nd page (entry-armvs.s 참고)를 0xffff0000 + PAGE_SIZE에 mapping
+	0xffff000 : high vector location -> 위 주석 참고
+    
+#endif /* @Iamroot  */
 
 	/* Now create a kernel read-only mapping */
 	map.pfn += 1;
@@ -1601,6 +1646,9 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 	/*
 	 * Ask the machine support to map in the statically mapped devices.
 	 */
+
+
+
 	if (mdesc->map_io)
 		mdesc->map_io();
 	else

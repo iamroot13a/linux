@@ -767,6 +767,14 @@ void __init trap_init(void)
 	return;
 }
 
+#if 0  /* @Iamroot: 2017.08.26 */
+
+링크참조 : 
+https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
+
+#endif /* @Iamroot  */
+
+
 #ifdef CONFIG_KUSER_HELPERS
 static void __init kuser_init(void *vectors)
 {
@@ -798,6 +806,10 @@ void __init early_trap_init(void *vectors_base)
 
 	vectors_page = vectors_base;
 
+#if 0  /* @Iamroot: 2017.08.26 */
+	vector table 초기화 -> 쓰레기 값으로 초기화
+#endif /* @Iamroot  */
+
 	/*
 	 * Poison the vectors page with an undefined instruction.  This
 	 * instruction is chosen to be undefined for both ARM and Thumb
@@ -812,10 +824,21 @@ void __init early_trap_init(void *vectors_base)
 	 * into the vector page, mapped at 0xffff0000, and ensure these
 	 * are visible to the instruction stream.
 	 */
+
+#if 0  /* @Iamroot: 2017.08.26 */
+	memcpy 1st Line -> vector table 구성
+	memcpy 2nd Line -> 실제 Vector data(함수들) 구성
+#endif /* @Iamroot  */
+	
 	memcpy((void *)vectors, __vectors_start, __vectors_end - __vectors_start);
 	memcpy((void *)vectors + 0x1000, __stubs_start, __stubs_end - __stubs_start);
 
 	kuser_init(vectors_base);
+#if 0  /* @Iamroot: 2017.08.26 */
+
+	vector 할당을 위해 icache에 저장된 data flush함
+
+#endif /* @Iamroot  */
 
 	flush_icache_range(vectors, vectors + PAGE_SIZE * 2);
 #else /* ifndef CONFIG_CPU_V7M */
