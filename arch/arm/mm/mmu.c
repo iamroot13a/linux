@@ -1556,7 +1556,17 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 
     pmd_clear() : pmd의 해당 entry 초기화 	
 #endif /* @Iamroot  */
-	 
+
+#if 0  /* @Iamroot: 2018.01.06 */
+    2018년 스터디 재개
+    
+	VMALLOC + FIXMAP 영역 초기화
+
+    FIXMAP : 부트업 타임에 요긴하기 쓰기위해 공간확보. 상세한 내용은 문씨블로그 참고 
+	http://jake.dothome.co.kr/fixmap/
+
+#endif /* @Iamroot  */
+
 	for (addr = VMALLOC_START; addr < (FIXADDR_TOP & PMD_MASK); addr += PMD_SIZE)
 		pmd_clear(pmd_off_k(addr));
 
