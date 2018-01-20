@@ -598,6 +598,16 @@ do_PrefetchAbort(unsigned long addr, unsigned int ifsr, struct pt_regs *regs)
  * on the boot CPU. This makes sure that the machine will not die if the
  * firmware/bootloader left an imprecise abort pending for us to trip over.
  */
+
+
+ #if 0  /* @Iamroot: 2018.01.20 */
+ 
+ 가설 : 부팅시 처음 발생하는 asynchronous abort를 무시하기 위해 사용
+        early abort handler 정의 후 fsr_info[]에 저장
+		-> local_abt_enble() 실행후 fsr_info[]값은 do_bad로 변환함
+
+ #endif /* @Iamroot  */
+
 static int __init early_abort_handler(unsigned long addr, unsigned int fsr,
 				      struct pt_regs *regs)
 {

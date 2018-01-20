@@ -1211,7 +1211,22 @@ static void __init pmd_empty_section_gap(unsigned long addr)
 {
 	vm_reserve_area_early(addr, SECTION_SIZE, pmd_empty_section_gap);
 }
+#if 0  /* @Iamroot: 2018.01.20 */
+	위의  주석  번역 : 
+	<Linux PMD는 2MB를 포함하는 두 개의 연속적인 섹션 항목으로 구성됩니다 
+	(include / asm / pgtable-2level.h의 정의 참조).
+	그러나 create_mapping ()을 호출하면 개별 1MB 섹션 매핑을 사용하여 정적 매핑을 최적화 할 수 있습니다.
+	이로 인해 실제 PMD는 맨 위 또는 맨 아래 항목 항목이 사용되지 않으면 초기화되고 나머지 ioremap () 
+	또는 vmalloc ()은 사용되지 않은 항목 항목에 의해 사용 가능한 가상 공간을 사용하려고 시도 할 때 
+	문제가 발생하게됩니다.
 
+	일단 정적 매핑이 제자리에 있으면 사용되지 않는 PMD 절반을 덮는 더미 VM 엔트리를 삽입하여이 
+	문제를 피하십시오.>
+	
+    Rasberry pi는 3단계 paging 시스템
+	위에서 언급한 이유로 인해 pmd의 gap을 메우는 작업진행
+
+#endif /* @Iamroot  */
 static void __init fill_pmd_gaps(void)
 {
 	struct static_vm *svm;
@@ -1269,6 +1284,12 @@ static void __init fill_pmd_gaps(void)
 #else
 #define fill_pmd_gaps() do { } while (0)
 #endif
+
+#if 0  /* @Iamroot: 2018.01.20 */
+
+   static_vmlist에 pci용 reserve영역을 나타내는 static_vm entry를 추가
+
+#endif /* @Iamroot  */
 
 #if defined(CONFIG_PCI) && !defined(CONFIG_NEED_MACH_IO_H)
 static void __init pci_reserve_io(void)
@@ -1681,6 +1702,14 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 	early_abt_enable();
 }
 
+#if 0  /* @Iamroot: 2018.01.20 */
+
+FIXADDR_START : 0xffc00000UL
+
+
+#endif /* @Iamroot  */
+
+
 static void __init kmap_init(void)
 {
 #ifdef CONFIG_HIGHMEM
@@ -1688,7 +1717,7 @@ static void __init kmap_init(void)
 		PKMAP_BASE, _PAGE_KERNEL_TABLE);
 #endif
 
-	early_pte_alloc(pmd_off_k(FIXADDR_START), FIXADDR_START,
+	early_pte_alloc(pmd_off_k(FIXADDR_START), FIXADDR_START,!d
 			_PAGE_KERNEL_TABLE);
 }
 

@@ -331,6 +331,13 @@ static inline void __local_flush_tlb_all(void)
 	tlb_op(TLB_V4_I_FULL | TLB_V6_I_FULL, "c8, c5, 0", zero);
 }
 
+#if 0  /* @Iamroot: 2018.01.20 */
+
+    flush_tlb_all() : Invalidate the entire TLB.
+	TLB management 및 상세 동작은 추후 다시 학습예정
+
+#endif /* @Iamroot  */
+
 static inline void local_flush_tlb_all(void)
 {
 	const int zero = 0;
