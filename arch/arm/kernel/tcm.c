@@ -252,6 +252,16 @@ static struct undef_hook tcm_hook __initdata = {
 /*
  * This initializes the TCM memory
  */
+
+
+#if 0  /* @Iamroot: 2018.01.27 */
+	TCM(Tighly coupled memory)
+	이글루스 내용 참고 (http://egloos.zum.com/nzcv/v/5435356)
+	Linux에서 ARM V7에는 TCM을 지원하지 않아 SKIP
+	최신version  Linux kernel을 받아 확인예정!
+
+#endif /* @Iamroot  */
+
 void __init tcm_init(void)
 {
 	u32 tcm_status;

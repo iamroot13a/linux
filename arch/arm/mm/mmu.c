@@ -1703,12 +1703,43 @@ static void __init devicemaps_init(const struct machine_desc *mdesc)
 }
 
 #if 0  /* @Iamroot: 2018.01.20 */
-
 FIXADDR_START : 0xffc00000UL
-
-
 #endif /* @Iamroot  */
 
+
+#if 0  /* @Iamroot: 2018.01.27 */
+
+**1.
+static inline pmd_t *pmd_off_k(unsigned long virt){
+      return pmd_offset(pud_offset(pgd_offset_k(virt), virt), virt);}
+
+**2. 
+문C 블로그 참고 (http://jake.dothome.co.kr/kmap) 
+
+rpi2에서는 기본 설정에서 ZONE_HIGHMEM을 사용하지 않는다. 
+rpi에서는 PAGE_OFFSET가 0xC000_0000(user space=3G, kernel space=1G) 이었는데 
+rpi2에서는 HIGHMEM을 사용하지 않으려 PAGE_OFFSET를 
+
+0x8000_0000(user space=2G, kernel space=2G)으로 하였다.
+
+rpi 같은 임베디드 application이 큰 가상주소를 요구하는 경우가 많지 않아 메모리가 
+1G 이상의 시스템에서 PAGE_OFFSET를 0x8000_0000으로 사용하는 경우가 있다. 
+만일 rpi2의 경우도 rpi같이 최대 메모리가 512M 였으면 PAGE_OFFSET를 0xC000_0000으로 설정하였을 것이다
+
+
+**3.PKMAP_BASE(persistant kernel mapping)
+    : PAGE_OFFSET - PMD_SIZE (PAGE_OFFSET : 0x8000_0000, ri2 ver.)
+	  (PMD_SIZE : 1UL << PMD_SHIFT(21) = 2MB) 
+
+static pte_t * __init early_pte_alloc(pmd_t *pmd, unsigned long addr, unsigned long prot){
+     return arm_pte_alloc(pmd, addr, prot, early_alloc); }
+
+
+**4.early_pte_alloc() 을 통해 (중간과정생략) 할당된 pmd 주소를 가져옴 
+
+** 결론적으로 pkmap 영역을 나타내는 page table의 시작주소를 pkmap_page_table에 할당함 
+
+#endif /* @Iamroot  */
 
 static void __init kmap_init(void)
 {
@@ -1717,8 +1748,8 @@ static void __init kmap_init(void)
 		PKMAP_BASE, _PAGE_KERNEL_TABLE);
 #endif
 
-	early_pte_alloc(pmd_off_k(FIXADDR_START), FIXADDR_START,!d
-			_PAGE_KERNEL_TABLE);
+	early_pte_alloc(pmd_off_k(FIXADDR_START), FIXADDR_START,
+		_PAGE_KERNEL_TABLE);
 }
 
 static void __init map_lowmem(void)
