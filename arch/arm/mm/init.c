@@ -134,6 +134,15 @@ void __init setup_dma_zone(const struct machine_desc *mdesc)
 #endif
 }
 
+#if 0  /* @Iamroot: 2018.03.03 */
+
+memblock 정보를 읽어 다음을 설정한다.
+	max_low : lowmem/highmem 영역의 경계 pfn
+	min : 메모리 영역의 최하 pfn
+	max_high : 	메모리 영역의 최상 pfn
+
+#endif /* @Iamroot  */
+
 static void __init zone_sizes_init(unsigned long min, unsigned long max_low,
 	unsigned long max_high)
 {
@@ -154,6 +163,13 @@ static void __init zone_sizes_init(unsigned long min, unsigned long max_low,
 #ifdef CONFIG_HIGHMEM
 	zone_size[ZONE_HIGHMEM] = max_high - max_low;
 #endif
+
+#if 0  /* @Iamroot: 2018.03.03 */
+
+	for_each_memblock : memory내 비연속적인 memblock의 start, end 물리주소를 가져옴
+	zone high/normal(low_mem) 로 나누어 각 영역내 hole&memblock size 구함
+
+#endif /* @Iamroot  */
 
 	/*
 	 * Calculate the size of the holes.
@@ -293,6 +309,31 @@ void __init arm_memblock_init(const struct machine_desc *mdesc)
 	memblock_dump_all();
 }
 
+
+#if 0  /* @Iamroot: 2018.03.03 */
+
+	memblock_allow_resize() : memblock flag를 1로 enable -> memblock size를 두배로 변경가능함
+	          -> 문C 블로그에 '2배'라고 기입되어 있으나 주석이나 다른곳에서의 설명찾을수 없음
+	
+	find_limits() : memblock_current_limit과 memblock_start & end의 물리주소 정보가져옴
+	
+	memblock_current_limit : high_mem & low_mem의 사이영역
+	-> case에 따라 변화함 -> 상세내용은 기존의 current_limit 주석참고함(아래참고)
+
+     set the "current_list" depends on case
+	 1. if limit gets over the end_of_kernel, limit should be arm_lowmem_limit
+	 2. if limit do not over the end of kernel, it has the end of corresponding memblock region
+
+	memtest() : physical memory test -> pattern에 따라 test 진행함
+	            -> kconfig내 HAVE_MEMBLOCK에 따라 On/OFF가능
+				-> default는 disable -> 상세내용은 skip!!
+    
+	sparse memory : 32bit arm에서는 주로사용되지 않는다 -> skip 함
+	Raspberrypi2 : 32bits
+	추가적인 부부은 문C 블로그 링크함 : http://jake.dothome.co.kr/sparsemem/
+
+
+#endif /* @Iamroot  */
 void __init bootmem_init(void)
 {
 	unsigned long min, max_low, max_high;
