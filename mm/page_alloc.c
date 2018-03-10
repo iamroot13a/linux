@@ -6025,6 +6025,13 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 	}
 }
 
+#if 0  /* @Iamroot: 2018.03.10 */
+
+	Ri2 : Flat_node_Mem_Map define
+	start -> Max_order_NR_PAGES : 1K
+
+#endif /* @Iamroot  */
+
 static void __init_refok alloc_node_mem_map(struct pglist_data *pgdat)
 {
 	unsigned long __maybe_unused start = 0;
@@ -6047,6 +6054,28 @@ static void __init_refok alloc_node_mem_map(struct pglist_data *pgdat)
 		 * aligned but the node_mem_map endpoints must be in order
 		 * for the buddy allocator to function correctly.
 		 */
+
+#if 0  /* @Iamroot: 2018.03.10 */
+
+	* if(!map) map은 tile 아키텍쳐 아닐시 Null : 문C블로그 참고
+	  map = memblock_virt_alloc_node_nopaic()
+	  -> 페이지 프레임을 관리하는 페이지프레임 구조체 배열의 첫번째 주소에 가상주소를 맵에 저장 
+	
+
+    * pgdat->node_mem_map : 
+	  ->page 프레임 갯수만큼의 페이지 구조체배열을 만들어 
+	  시작주소에 해당하는 가상주소를 node_mem_map에 저장
+
+    * NODE_DATA(nid) : 노드 정보를 관리하는 페이지 포인터
+
+	* mem_map : map + offset 정보 들어감
+
+	* if (page_to_pfn(mem_map) != pgdat->node_start_pfn)
+	 -> mem_map의 첫번째  페이지의 물리주소와 실제 첫번째 페이지프레임의 시작주소가 다를 경우
+	 -> mem_mep = mem_map - offset (pgdat->node_start_pfn - start)
+
+#endif /* @Iamroot  */
+
 		end = pgdat_end_pfn(pgdat);
 		end = ALIGN(end, MAX_ORDER_NR_PAGES);
 		size =  (end - start) * sizeof(struct page);
@@ -6070,6 +6099,34 @@ static void __init_refok alloc_node_mem_map(struct pglist_data *pgdat)
 #endif
 #endif /* CONFIG_FLAT_NODE_MEM_MAP */
 }
+
+#if 0  /* @Iamroot: 2018.03.10 */
+	* NODE_DATA(nid) =  (&contig_page_data)
+     contig_page_data -> .bdata = &bootmem_node_data[0]
+    
+	 => .bdata는 bootmem_data_t 구조체에 대한 포인터
+	 **NUMA 시스템 지원을 위해 각 메모리노드는 다음과같은 bootmem_data_t 데이터에대한 포인터를 포함
+	
+	-> 시스템에 있는 메모리의 정보가 저장되는 구조체의 주소를 되돌려주는 매크로
+	-> 문C 블로그 코멘트 추가  
+	   " pg_data_t *pgdat -> 노드에 속한 페이지를 관리하는 구조체 포인터를 알아온다."
+
+    * classzone : zonetype. ex) DMA : 1, Highmem :2 
+    
+	* reset_deferred_meminit() : 
+	  (내용첨부 -> https://cateee.net/lkddb/web-lkddb/DEFERRED_STRUCT_PAGE_INIT.html)
+	
+	"Ordinarily all struct pages are initialised during early boot in a single thread. 
+	 On very large machines this can take a considerable amount of time. 
+	 If this option is set, large machines will bring up a subset of memmap at boot and then 
+	 initialise the rest in parallel when kswapd starts. 
+	 This has a potential performance impact on processes running early
+	 in the lifetime of the systemm until kswapd finishes the initialisation."
+
+     * ARM의 경우 64bit만 NUMA를 지원 (2014년 patch를 통해 변경)
+	   "Refer첨부 -> http://jake.dothome.co.kr/mm-1"
+
+#endif /* @Iamroot  */
 
 void __paginginit free_area_init_node(int nid, unsigned long *zones_size,
 		unsigned long node_start_pfn, unsigned long *zholes_size)
