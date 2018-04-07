@@ -5932,11 +5932,9 @@ static unsigned long __paginginit calc_memmap_size(unsigned long spanned_pages,
       NUMA_BALANCING, TRANSPARENT_HUGEPAGE, COMPACTION 
 	  -> configuration 되어있지 않음 (HUGEPAGE는 LPAE 설정에 따름,LPAE O -> HUGEPAGE O) 
 		 
-		 wait_queue_head_t는 wait_queue_t 가 연결 되는 head를 가리킨다
-		
-		 kswapd_wait queue 초기화, pfmemalloc_wait_queue 초기화함
-
- #endif /* @Iamroot  */
+		 init_waitqueue 
+			  
+			   #endif /* @Iamroot  */
 
 static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 {
@@ -5950,41 +5948,16 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 	pgdat->numabalancing_migrate_nr_pages = 0;
 	pgdat->numabalancing_migrate_next_window = jiffies;
 #endif
-#ifdef iCONFIG_TRANSPARENT_HUGEPAGE
-	spini_iilock_init(&pgdat->split_queue_lock);
-	INIT_iLiiiIST_HEAD(&pgdat->split_queue);
-	pgdiiiat->ispiiilit_queue_len = 0;
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+	spin_lock_init(&pgdat->split_queue_lock);
+	INIT_LIST_HEAD(&pgdat->split_queue);
+	pgdat->split_queue_len = 0;
 #endif
 	init_waitqueue_head(&pgdat->kswapd_wait);
 	init_waitqueue_head(&pgdat->pfmemalloc_wait);
 #ifdef CONFIG_COMPACTION
 	init_waitqueue_head(&pgdat->kcompactd_wait);
 #endif
-	
-	#if 0  /* @Iamroot: 2018.04.07 */
-	page_ext : page extension
-	-> 페이지 당 확장 된 데이터에 대한 메모리를 관리하는 기능
-       구조체 페이지 수정없이 구조 페이지 자체가 아닌 
-	   특정 위치에서 페이지 당 확장 데이터에 대한 메모리를 할당
-	
-	문C 블로그 참고 "http://jake.dothome.co.kr/page_ext_init_flatmem/" 중
-    page_ext_ops[] 전역객체 부분
-	
-	spanned_size : 홀까지도 포함된 페이지 사이즈
-	present_pages : 실제 페이지 사이즈
-
-    * calc_memmap_size : 4K로 정렬된 페이지의 갯수를 return
-
-	* j zone이 highmem에 있지 않은 경우
-	  freesize에서 memmap에 사용될 pages 수 만큼을 감소시킨다.
-
-    *** freesize > memmap_pages 일것이라고 예상됨
-	    -> 아래 if 조건문은 일단 skip -> 추후 필요시 확인
-
-	* spanned_pages : 유효 memory memblock 페이지의 시작과 끝	
-    #endif /* @Iamroot  */
-
-
 	pgdat_page_ext_init(pgdat);
 
 	for (j = 0; j < MAX_NR_ZONES; j++) {
@@ -6039,27 +6012,6 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 						/ 100;
 		zone->min_slab_pages = (freesize * sysctl_min_slab_ratio) / 100;
 #endif
-
-#if 0  /* @Iamroot: 2018.04.07 */
-	*seqlock 은 순차적으로 번호를 매겨가는 방식의 lock
-	 -> 추후 상세히 알아볼것
-
-	*zone_pcp_init : per-cpu page frame cache 초기화
-	                per-cpu는 일정한 데이터를 각 cpu에 할당하여 처리속도 높이는 방법
-					page frame cache는 buddy 시스템을 사용하지 않고,
-					single page(0 order, 4k, 가장작은단위)를 cache안에 두고 빠르게 처리 
-    
-	*mod_zone_page_state : modified per-cpu state (counter를 통해 상태변화)
-	 -> 상세 설명은 함수를 통해 확인할것-> skip
-
-	*lruvec_init : LRU vector list 초기화(LRU : 가장 오래된것 퇴출)
-	 lruvec 구조체 : LRU_lists 갯수, inactive_age, reclaim_stat이 존재
-	
-	*setup_usemap : 
-	 -> memblock_virt_alloc_try_nid_nopanic - allocate boot memory block
-        return -> Virtual address of allocated memory block on success, NULL on failure.
-#endif /* @Iamroot  */
-
 		zone->name = zone_names[j];
 		spin_lock_init(&zone->lock);
 		spin_lock_init(&zone->lru_lock);
