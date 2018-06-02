@@ -5226,6 +5226,14 @@ not_early:
 	}
 }
 
+#if 0  /* @Iamroot: 2018.06.02 */
+
+	* buddy system : 11 orders
+    Migration type : 3가지 기본  + Alpha (http://jake.dothome.co.kr/buddy-alloc/ 참고)  
+    결론적으로 buddy system 내 free area 초기화
+
+#endif /* @Iamroot  */
+
 static void __meminit zone_init_free_lists(struct zone *zone)
 {
 	unsigned int order, t;
@@ -5394,6 +5402,19 @@ void __init setup_per_cpu_pageset(void)
 	for_each_populated_zone(zone)
 		setup_zone_pageset(zone);
 }
+#if 0  /* @Iamroot: 2018.06.02 */
+     * wait_table       -- the array holding the hash table
+	 * wait_table_hash_nr_entries   -- the size of the hash table array
+	 * wait_table_bits  -- wait_table_size == (1 << wait_table_bits)
+
+	zone 페이지 갯수만큼 wait table 해쉬 엔트리를 할당 
+	해쉬테이블 array 수만큼 wait table size 결정
+	alloc_size 결정		
+
+	* memblock_virt_alloc_node_nopanic : memblock을 지정된 node에서 size 만큼 할당받는다.
+	slab_not available ? -> memblock 이용해서 wait_table 할당
+	현재 부팅초기화중이라 slab(buddy system) 사용X
+#endif /* @Iamroot  */
 
 static noinline __init_refok
 int zone_wait_table_init(struct zone *zone, unsigned long zone_size_pages)
@@ -6019,6 +6040,15 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat)
 			printk(KERN_DEBUG "  %s zone: %lu pages reserved\n",
 					zone_names[0], dma_reserve);
 		}
+
+#if 0  /* @Iamroot: 2018.06.02 */
+	!is_highmem_idx(d) = 1 (highmem 사용 x) ->  커널페이지수 = 커널페이지 + freesize
+    nr_all_pages = allpages + freesize 
+
+    managed pages = highmem X -> freesize
+    NUMA -> Not supported 
+#endif /* @Iamroot  */
+
 
 		if (!is_highmem_idx(j))
 			nr_kernel_pages += freesize;

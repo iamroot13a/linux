@@ -1007,6 +1007,13 @@ static int __init early_mem(char *p)
 }
 early_param("mem", early_mem);
 
+#if 0  /* @Iamroot: 2018.06.02 */
+    request_standard_resources :   플랫폼에  의존적이지  않고 공통적으로  관리되는  리소스  정보를
+	트리 형태로 구성
+	차주 진행할것
+
+#endif /* @Iamroot  */
+
 static void __init request_standard_resources(const struct machine_desc *mdesc)
 {
 	struct memblock_region *region;

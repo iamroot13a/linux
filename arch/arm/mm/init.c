@@ -364,6 +364,13 @@ void __init bootmem_init(void)
 	 */
 	zone_sizes_init(min, max_low, max_high);
 
+#if 0  /* @Iamroot: 2018.06.02 */
+	ll_rw_block : (https://www.kernel.org/doc/htmldocs/filesystems/API-ll-rw-block.html) 참고
+    상세 도식은 http://jake.dothome.co.kr/bootmem_init/ 를 통해 확인할것
+	-> 결론적으로  DRAM을 3영역으로 나누는것임
+    -> 추후 다시 확인할것 
+#endif /* @Iamroot  */
+
 	/*
 	 * This doesn't seem to be used by the Linux memory manager any
 	 * more, but is used by ll_rw_block.  If we can get rid of it, we
