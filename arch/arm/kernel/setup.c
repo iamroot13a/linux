@@ -1007,10 +1007,30 @@ static int __init early_mem(char *p)
 }
 early_param("mem", early_mem);
 
-#if 0  /* @Iamroot: 2018.06.02 */
+#if 0  /* @Iamroot: 2018.06.09 */
     request_standard_resources :   플랫폼에  의존적이지  않고 공통적으로  관리되는  리소스  정보를
 	트리 형태로 구성
-	차주 진행할것
+
+    *System Ram 영역에 kernel code, data 영역 추가
+    *mdesc(machine description)에 Video 정보 존재시 비디오 램영역  추가
+	*LP0(Line Printer port),lp1,lp2 영역 추가
+
+	*System Ram 영역 구성시 - for_each_memblock()
+	-> 구조체 배열 리소스 사이즈 만큼 Memblock의 할당 받아 memblock 시작/끝 주소 기록
+
+	*request_resource(&iomem_resource,res) : 전역 iomem_resource에 System Ram영역(memblock 영역)에 
+	대한 리소스를 등록
+	
+	* 커널코드/데이터의 물리주소(영역)가 System Ram 물리주소(영역)에 포함된 경우 System Ram의 Child
+	에 추가(리소스 등록)
+	-> 추후 이 부분은 UnWrite의 하기위함인듯(?) 
+
+    request_resource() 는 문C 블로그내 설명을 참고할것
+	http://jake.dothome.co.kr/tcm_init/
+
+	request_resource 함수에 대해 간략히 설명하자면, 
+	request_resource_conflict 함수 :  write_lock/unlock을 통해 동기화 제어한 상태에서
+	리소스 관리 -> new 리소스가 root 범위와 겹치지 않을경우 sibling에 추가함
 
 #endif /* @Iamroot  */
 
@@ -1258,6 +1278,10 @@ __atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 �
 
 	paging_init(mdesc);
 	request_standard_resources(mdesc);
+#if 0  /* @Iamroot: 2018.06.09 */
+    multi CPU인경우 arm_pm_restart 적용되어야 함
+	-> Rasberry Pi2의 경우 1 CPU이기 때문에 mdesc에 기입 X 로 생각됨
+#endif /* @Iamroot  */
 
 	if (mdesc->restart)
 		arm_pm_restart = mdesc->restart;
