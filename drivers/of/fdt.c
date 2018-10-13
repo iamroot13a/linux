@@ -272,6 +272,31 @@ static void populate_properties(const void *blob,
 		*pprev = NULL;
 }
 
+#if 0  /* @Iamroot: 2018.10.13 */
+
+fdt_get_name()
+: blob의 offset노드에서 노드명 알아오고 I에는 길이 담아옴
+
+allocl = ++l
+-> 다음버전의 DTB 읽어들일때 사용
+
+if((*pathp) != '/'
+
+DTB version 0x10에서는 compact 노드명을 사용하고 그 전에는 full path 노드명을 사용하였다.
+예) 노드명(compact 스타일)=”uart@7e201000″
+pathp=”uart@7e201000″을 가리키고, l=13
+예) 노드명(full path 스타일)=”/soc/uart@7e201000″
+pathp=”/soc/uart@7e201000″을 가리키고, l=18
+
+(문C 블로그 참고 http://jake.dothome.co.kr/unflatten_device_tree/)
+
+fpsize == 0 인경우
+'/'가 2번 추가될수 있으니 "" 처리함 -> 그리고 fpsize =1 로 변경
+allocl = 2(할당길이도 2로 변경) 노드길이(l = 1)로 변경
+fpsize != 0 인경우 아래의 코드대로 동작
+
+#endif /* @Iamroot  */
+
 static unsigned int populate_node(const void *blob,
 				  int offset,
 				  void **mem,
