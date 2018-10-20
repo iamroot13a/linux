@@ -343,6 +343,38 @@ static unsigned int populate_node(const void *blob,
 			allocl = fpsize;
 		}
 	}
+#if 0  /* @Iamroot: 2018.10.20 */
+
+np = unflatten_dt_alloc() 
+-> device node + full path 길이 크기만큼 저장할 메모리의 첫번째 주소 
+-> __unflatten_device_tree() 함수 참조할것
+
+->dryrun=1(실제메모리값 존재, device node 전체size측정을 위한것이 아닐경우)
+
+of_node_init(np) 
+-> kernel object 초기화 + fwnode_of(1)로 불러옴 
+-> kernel object : 계층과 구조체로 device들을 관리하기 위해 사용하는 객체
+-> fwnode : firmware device node object
+-> fwnode.h (include directory에 존재) -> firmware device node object handletype을 정의하기 위함
+
+fwnode_of : of-> open firmware의 약자
+
+np -> full_name = fn : 
+->((char *)np) + sizeof(*np) : device node의 첫번째 항목의 주소 + device_node의 크기
+-> np->full path 가 full path node 이름을 가리키게 함
+-> (device node + full path node)의 형태로 메모리에 구성됨; 대략적설명임
+
+new_format : DTB에 기록된 노드명이 compact 노드명일경우
+dad && dad-> parent
+-> 부모노드 와 부모노드의 부모가 존재하는경우 
+
+strcpy(fn, dad->full_name);, fn += strlen(fn);
+-> dad : full name 복사, fn 문자열 길이만큼 증가시킴
+
+memcpy : full path 복사
+
+#endif /* @Iamroot  */
+
 
 	np = unflatten_dt_alloc(mem, sizeof(struct device_node) + allocl,
 				__alignof__(struct device_node));
@@ -490,7 +522,21 @@ static int unflatten_dt_nodes(const void *blob,
  *
  * Returns NULL on failure or the memory chunk containing the unflattened
  * device tree on success.
- */
+ * /
+#if 0  /* @Iamroot: 2018.10.20 */
+
+함수 처음 동작시(first pass, scan)
+-> size = unflatten_dt_nodes(blob, NULL, dad, NULL);
+-> 전체 노드 이름,속성 스캔-> 사이즈 스캔
+ + device node 만큼 메모리 할당 받음 
+
+Second pass, do actual unflattening
+-> unflatten_dt_nodes(blob, mem, dad, mynodes);
+-> 할당받은 메모리에 저장 
+
+#endif /* @Iamroot  */
+
+
 static void *__unflatten_device_tree(const void *blob,
 				     struct device_node *dad,
 				     struct device_node **mynodes,
