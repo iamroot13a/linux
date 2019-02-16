@@ -208,6 +208,16 @@ static void populate_properties(const void *blob,
 					__alignof__(struct property));
 		if (dryrun)
 			continue;
+#if 0  /* @Iamroot: 2019.02.16 */
+ phandle 속성은 DTB내에서 고유한 노드의 숫자 식별자.  phandle 속성값은 속성과 연관된 노드를 참조해야하는 다른 노드에 의해 사용됨.
+ -> 연관된 노드를 refer하기 편하게 하기 위함.
+
+참고(예시도 참고할것) -> https://elinux.org/Device_Tree_Mysteries#Phandle, 
+
+ linux,phandle(legacy) = phandle, 'ibm,phandle' ibm용 pSeries dynamic tree -> 무시할것
+ 
+ #endif /* @Iamroot  */
+   
 
 		/* We accept flattened tree phandles either in
 		 * ePAPR-style "phandle" properties, or the
@@ -234,6 +244,13 @@ static void populate_properties(const void *blob,
 		*pprev     = pp;
 		pprev      = &pp->next;
 	}
+#if 0  /* @Iamroot: 2019.02.16 */
+
+version 0x10 : compact node name -> name property가 없다 
+The name property : a string specifying the name of the node.
+-> 노드 구성을 위해 name 속성 재 생성함.
+
+#endif /* @Iamroot  */
 
 	/* With version 0x10 we may not have the name property,
 	 * recreate it here from the unit name if absent
@@ -253,6 +270,26 @@ static void populate_properties(const void *blob,
 		if (pa < ps)
 			pa = p;
 		len = (pa - ps) + 1;
+
+#if 0  /* @Iamroot: 2019.02.16 */
+
+예) full path 노드명 스타일: pathp=”/abc/a@1000″
+		sz=2 (“a” + 1)
+예) compact 노드명 스타일: pathp=”abc@1000″
+		sz=4 (“abc” + 1)
+
+-> compact 노드명일때 pa = @주소, ps = 'abc' string 이전 주소값
+
+예) compact 노드명 스타일: pathp=”” (루트노드의 경우)
+		sz=1 (“” + 1)
+
+pp = unflatten_dt_alloc(&mem, sizeof(struct property) + sz, __alignof__(struct property));
+속성 구조체 정보 단위로 속성 구조체 사이즈 + sz (value 값에 대한 문자열 길이+1)만큼 사용할 pp 주소를 얻어내고 mem 주소는 그 만큼 증가한다.
+
+참고 : http://jake.dothome.co.kr/unflatten_device_tree/
+
+#endif /* @Iamroot  */
+		
 		pp = unflatten_dt_alloc(mem, sizeof(struct property) + len,
 					__alignof__(struct property));
 		if (!dryrun) {
