@@ -482,6 +482,27 @@ static void reverse_nodes(struct device_node *parent)
 	}
 }
 
+#if 0  /* @Iamroot: 2019.03.16 */
+
+unflatten_dt_nodes() : 노드
+
+dryrun = 1일때 dtb 파싱해서 dtb 안에 있는 전체 device node와 property node의 전체사이즈를 구한다
+dryrun = 0일때 전체 사이즈만큼 할당받은 메모리를 이용해서 device node tree와 property를 구성한다
+
+fdt_next_node() : next node의 offset 및 depth값 가져옴
+**populate_node() : dryrun =1 -> fdt_next_node()함수가 가리키는 노드와 노드에 포함된 속성의 사이즈를 구한다
+                  dryrun =0 -> fdt_next_node()함수가 가리키는 노드와 노드에 포함된 속성을 device_node와 property구조체형태로 구성한다 
+
+  if (!dryrun && nodepp && !*nodepp)
+    *nodepp = nps[depth+1];
+ -> device_node 구조체 형태의 트리의 root를 지정(of_root변수, 함수 시작시 처음한번만 실행)
+
+ if (!dryrun && !root)
+     root = nps[depth+1];
+-> tree를 reverse 할때 사용할 tree의 root node를 지정 ( 트리를 구성할때 node들의 순서가 거꾸로 정렬되어 있음) 
+
+#endif /* @Iamroot  */
+
 /**
  * unflatten_dt_nodes - Alloc and populate a device_node from the flat tree
  * @blob: The parent device tree blob
@@ -570,6 +591,9 @@ static int unflatten_dt_nodes(const void *blob,
 Second pass, do actual unflattening
 -> unflatten_dt_nodes(blob, mem, dad, mynodes);
 -> 할당받은 메모리에 저장 
+
+2019.03.16  추가
+-> 할당받은 메모리를 이용하여 tree 구성
 
 #endif /* @Iamroot  */
 

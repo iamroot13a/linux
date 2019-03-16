@@ -1946,6 +1946,18 @@ static void of_alias_add(struct alias_prop *ap, struct device_node *np,
 		 ap->alias, ap->stem, ap->id, of_node_full_name(np));
 }
 
+#if 0  /* @Iamroot: 2019.03.16 */
+
+alias node : device이름 줄임말, full path 대신함
+
+chosen_node : 실제 device나 하드웨어를 대표하지 않지만, firmware와 OS 사이에서 data를 주고 받을수 있는 임의의 공간(?)
+-> boot time에 .dts 소스파일을 공간에 두고 파일전달 가능. (평소에는 비어있음)
+-> 일종의 환경설정을 위한 데이터
+
+of_find_node_by_path() : 매개변수로 전달된 path값에 해당하는 node를 return.
+
+#endif /* @Iamroot  */
+
 /**
  * of_alias_scan - Scan all properties of the 'aliases' node
  *
