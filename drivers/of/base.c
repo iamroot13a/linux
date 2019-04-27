@@ -769,6 +769,28 @@ static struct device_node *__of_find_node_by_path(struct device_node *parent,
  *	Returns a node pointer with refcount incremented, use
  *	of_node_put() on it when done.
  */
+
+#if 0  /* @Iamroot: 2019.04.06 */
+const char *separator = strchr(path, ':');
+--> ':'구분 기호를 사용하여 경로 끝에 추가 된 옵션 문자열의 시작을 저장할 포인터의 주소.
+
+if (strcmp(path, "/") == 0)
+	return of_node_get(of_root);
+-->해당 매개변수로 넘어 온 device_node 구조체타입의 노드가 있으면 
+   해당 노드의 kobject refcount 값 증가 후 해당 노드를 리턴한다.
+   사용이유 - path가 / 면 of_root를 리턴하면 더 이상 검색하지 않는다.
+
+for_each_property_of_node(of_aliases, pp)
+--> of_aliases 노드의 모든 속성값을 루프를 돌면서 검색한다.
+
+if (separator && separator < path)
+	break;
+--> separator(':') 경로의 끝에 추가적인 옵션 문자열을 나타내기 위해 사용하는
+    문자로 separator 전까지가 실제 경로이기 때문에 separator가 있고 path가 
+	separator보다 크면 break 된다.
+
+#endif /* @Iamroot  */
+
 struct device_node *of_find_node_opts_by_path(const char *path, const char **opts)
 {
 	struct device_node *np = NULL;
@@ -1968,6 +1990,21 @@ of_find_node_by_path() : 매개변수로 전달된 path값에 해당하는 node�
  * @dt_alloc:	An allocator that provides a virtual address to memory
  *		for storing the resulting tree
  */
+
+#if 0  /* @Iamroot: 2019.04.06 */
+if (of_chosen) { 
+	  ... 
+}
+--> /chosen 노드의 stdout-path 속성값을 이용하여 boot console output으로 사용할 uart를 나타내는 노드를 
+    of_stdout에 저장 및 of_stdout_options에 옵션값을 저장한다.
+     참조)https://www.kernel.org/doc/Documentation/devicetree/bindings/chosen.txt 
+	   chosen {
+		stdout-path = "/serial@f00:115200";
+	    };
+	of_stdout: /serial@f00
+	of_stdout_options: 115200
+
+#endif /* @Iamroot  */
 void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align))
 {
 	struct property *pp;
@@ -1990,6 +2027,29 @@ void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align))
 
 	if (!of_aliases)
 		return;
+
+#if 0  /* @Iamroot: 2019.04.06 */
+    struct alias_prop {
+	   struct list_head link;
+	   const char *alias;
+	   struct device_node *np;
+	   int id;
+	   char stem[0];
+   };
+
+for_each_property_of_node(of_aliases, pp) {
+	...
+}
+--> alias 내에 있는 모든 속성들을 alias_prop 구조체 형태로 변환 후 aliases_lookup 리스트에 추가
+    link: 링크드 리스트
+    alias: 속성명
+        예) “chosen”, “uart0”
+    np: 노드(device_node)를 가리킨다.
+    id: 노드의 메모리 또는 포트가 사용하는 주소
+        예) 노드명이 serial@12000 인 경우 id=12000
+    stem: index(id)를 제외한 full path 노드명
+        예) “/soc/uart@”
+#endif /* @Iamroot  */
 
 	for_each_property_of_node(of_aliases, pp) {
 		const char *start = pp->name;
