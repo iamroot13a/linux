@@ -58,6 +58,38 @@ static inline int set_smp_ops_by_method(struct device_node *node)
 }
 #endif
 
+#if 0  /* @Iamroot: 2019.06.08 */
+
+**arm_dt_init_cpu_maps() 함수는 디바이스 트리내 Cpu노드의 속성정보를 바탕으로 CPU 로지컬 맵을 구성할지
+부팅시의 defalut CPU 로지컬 맵을 사용할지 결정하는 함수
+
+**디바이스 트리내 cpu노드의 MPIDR(Multiprocessor Affinity Register)이 valid하다면
+smp_setup_processor_id()를 찾아낸 MPIDR값으로 변경함
+
+그리고 탑재된 하드웨어의 정보에 기반해서 이미작성된 smp_operation 정보에 따라 동작되도록 설정
+
+**각 cpu 코어별로 coprocessor가 존재
+
+**method 는 하드웨어 정보를 뜻함 
+CPU_METHOD_OF_DEclare함수는 __cpu_method_of_table 섹션의 of_cpu_method 구조체 정보를 저장
+
+CPU_method_of_table에는 여러 cpu들이 지원하는 smp operation 정보들의 모임
+
+
+**CPU_Method_of_declare 예시
+*************************************************************************
+static const struct smp_operations smp_msm8660_ops __initconst = {
+    .smp_prepare_cpus   = qcom_smp_prepare_cpus,
+   .smp_secondary_init = qcom_secondary_init,
+   .smp_boot_secondary = msm8660_boot_secondary,
+#ifdef CONFIG_HOTPLUG_CPU
+ .cpu_die        = qcom_cpu_die,
+#endif
+};
+CPU_METHOD_OF_DECLARE(qcom_smp, "qcom,gcc-msm8660", &smp_msm8660_ops);
+*************************************************************************
+
+#endif /* @Iamroot  */
 
 /*
  * arm_dt_init_cpu_maps - Function retrieves cpu nodes from the device tree
