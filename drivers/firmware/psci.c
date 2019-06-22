@@ -221,7 +221,7 @@ static int get_set_conduit_method(struct device_node *np)
 	}
 
 	if (!strcmp("hvc", method)) {
-		invoke_psci_fn = __invoke_psci_fn_hvc;
+			invoke_psci_fn = __invoke_psci_fn_hvc;
 	} else if (!strcmp("smc", method)) {
 		invoke_psci_fn = __invoke_psci_fn_smc;
 	} else {
@@ -495,6 +495,26 @@ static int __init psci_probe(void)
 }
 
 typedef int (*psci_initcall_t)(const struct device_node *);
+
+#if 0  /* @Iamroot: 2019.06.22 */
+PSCI(power state Coordination Interface) : 전력조절 인터페이스
+-> 절전 인터페이스로 psci가 선택되었을때 사용가능
+-> processor의 PSCI 지원여부에 따라 PSCI 버전선택 가능하며, 지원되는 기능이 다르다
+-> psci 호출을 통해 DTB의 PSCI노드에 method 속성값에 따라서 SMC(secure monitor call)나 HVC(hyperVisor call) 동작가능
+
+-> 주요 기능중 migrate는 secure Trust OS를 현재 동작중 cpu이외의 다른 cpu로 이주가능
+
+-> cpu suspend는 전력소비를 낮추기위해 4가지 모드로 변경가능
+(Arm 문서 참고 : http://infocenter.arm.com/help/topic/com.arm.doc.den0022d/Power_State_Coordination_Interface_PDD_v1_1_DEN0022D.pdf)
+->본 커널에서는 system_suspend는 mem, stanby, freeze 지원한다(psci v.1.0 이상만 지원)
+ 
+-> PSCI 버전별 기능지원 여부는 링크 참고
+-> 링크 : http://jake.dothome.co.kr/psci_init/
+
+-> SMCCC(secure monitor call calling convention) 관련링크 : http://infocenter.arm.com/help/topic/com.arm.doc.den0028b/ARM_DEN0028B_SMC_Calling_Convention.pdf
+
+#endif /* @Iamroot  */
+
 
 /*
  * PSCI init function for PSCI versions >=0.2
