@@ -721,6 +721,36 @@ void __init smp_setup_processor_id(void)
 
 	pr_info("Booting Linux on physical CPU 0x%x\n", mpidr);
 }
+#if 0  /* @Iamroot: 2019.06.29 */
+mpidr_hash : cpu id정보와 mpidr정보를 가져와 hash테이블 생성. 
+-> CPU ID값을 키값으로 해서 MPDIR_hashtable을 통해 빠르게 affinity레벨의 CPU ID를 구해옴
+-> shift 값을 구해놓음으로써 CPU ID값을 빠르게 가져올수 있음
+링크 : http://jake.dothome.co.kr/smp_build_mpidr_hash/
+
+********************************
+해쉬테이블 생성 예시
+
+fls() 계산 : x = 0x3 & 0xffff0000 -> x = 0x30000, 
+X << 16 -> r = 16 // x = 0x30000 00 -> r =8 // x = 0x30000 00 0 ->  r=4 //
+x = 0xC0000 00 0 -> r = 2 //  return 2 -> 위치 2번째
+
+*************************************
+ffs () 계산 : x = 0x3 & 0xffff -> return 1
+
+*************************************
+aff[] 계산 : ls = 2, fs[0] = 0, bits[0] = 2
+aff[0] = 0 // aff[1] = 6 // aff[2] = 14
+
+mask = 3, bits = 2
+
+*************************************
+
+sync_cache_w()
+->hash 구조체 주소정보를 가져와 사이즈 구하고 datacache 할당 및 flush
+->outer cache 또한 할당 및 clean
+
+#endif /* @Iamroot  */
+
 
 struct mpidr_hash mpidr_hash;
 #ifdef CONFIG_SMP
@@ -1290,6 +1320,16 @@ __atags_pointer : kernel/head-common.S에 선언되어있는 변수 그대로 �
 
 	arm_dt_init_cpu_maps();
 	psci_dt_init();
+#if 0  /* @Iamroot: 2019.06.29 */
+xen_early_init() : xen hypervisor 지원버전및 feature 지원여부 확인.
+                   user-set 되어있는것이 없을 경우 'hvc' preferred colsole로 세팅함	
+
+smp_init_cpus() : device possible cpu수 정보 가져오고, 해당 cpu 코어번호에 대해 cpu possible 비트설정
+
+smp_ops 전역변수설정 : smp 오퍼레이션은 크게 3가지 타입으로 나뉜다
+1. mdesc를 사용하는 smp operation, 2.PSCI용 3.Spin-table을 사용(ARM64용 ? )
+
+#endif /* @Iamroot  */
 	xen_early_init();
 #ifdef CONFIG_SMP
 	if (is_smp()) {
