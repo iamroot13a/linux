@@ -45,6 +45,20 @@
 #include <linux/string_helpers.h>
 #include "kstrtox.h"
 
+#if 0  /* @Iamroot: 2019.07.06 */
+_parse_integer_fixup_radix() : cmdline의 진수 구함
+ex) 0x128M~ ->128M의 '1' 위치 return
+
+_parse_integer() : cmdline의 문자열중 (16, 8, 10진수중)숫자로된문자열을 위 함수에서 구한 진수를 이용하여 ULL(unsigned longlong) 타입으로 변환 -> result에 변환값 저장, return되는값이 자릿수
+
+cp+ : cmdline이 가리키는 문자열의 위치에서 자릿수만큼 이동된 문자열의 위치를 나타냄 
+ex) 0x128M@~ 일때 "'1' 위치 + 자리수"   
+*endp : '0x128M@' 중 'M' 위치 가리킴 
+
+ return result : '128'
+#endif /* @Iamroot  */
+
+
 /**
  * simple_strtoull - convert a string to an unsigned long long
  * @cp: The start of the string

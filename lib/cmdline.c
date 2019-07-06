@@ -115,6 +115,17 @@ char *get_options(const char *str, int nints, int *ints)
 }
 EXPORT_SYMBOL(get_options);
 
+#if 0  /* @Iamroot: 2019.07.06 */
+memparse() : 
+ex) cmdline-> '0x128M@~' : endptr은 M 가리킴
+    simple_strtoull()의 return 값 : '128' 
+	case 문 돌며 ret << = 20 진행됨
+    ret = '128x1024x1024'
+  
+    retptr : '0x128M@~' 중 '@'나타냄
+
+#endif /* @Iamroot  */
+
 /**
  *	memparse - parse a string with mem suffixes into a number
  *	@ptr: Where parse begins
