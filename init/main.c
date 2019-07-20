@@ -352,6 +352,12 @@ static inline void setup_nr_cpu_ids(void) { }
 static inline void smp_prepare_cpus(unsigned int maxcpus) { }
 #endif
 
+#if 0  /* @Iamroot: 2019.07.20 */
+'atags_parse.c'내 setup_machine_tags()를 통해 boot_command_line값을 가져옴
+
+command_line != boot_command_line (추후 다른값이 호출될것으로 예상)
+#endif /* @Iamroot  */
+
 /*
  * We need to store the untouched command line for future reference.
  * We also need to store the touched command line since the parameter

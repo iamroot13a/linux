@@ -1067,6 +1067,15 @@ subsys_initcall(crash_notes_memory_init);
  * this code is intended to be called from architecture specific code
  */
 
+#if 0  /* @Iamroot: 2019.07.20 */
+cmdline=”ramsize-range:size[,…][@offset]” 형태로 문자열이 전달된 경우 
+‘,’로 구분한 마지막 range에서 size를 파싱하여 출력 인수 crash_size에 담고, 
+@offset를 파싱하여 crash_base에 담은 후 성공리에 0을 리턴한다. 
+만일 range가 system_ram을 초과하는 경우에는 에러를 리턴한다.
+
+문씨블로그 : http://jake.dothome.co.kr/reserve_crashkernel/
+
+#endif /* @Iamroot  */
 
 /*
  * This function parses command lines in the format
@@ -1264,6 +1273,25 @@ next:
 
 	return ck_cmdline;
 }
+#if 0  /* @Iamroot: 2019.07.20 */
+return parse_crashkernel_mem(ck_cmdline, system_ram,                 crash_size, crash_base);
+-> ck_cmdline 값에 따라 error 메세지 또는 '0' 리터하지만,
+crash_size와 crash_base값 구함
+
+#endif /* @Iamroot  */
+
+#if 0  /* @Iamroot: 2019.07.20 */
+
+crashkernel cmd 형태에 따라 parse함
+
+1) suffix가 주어진 경우
+“64M,high”
+2) ‘:’문자로 구분된 range가 주어진 경우
+“xxx-yyy:64M@0”
+3) 단순히 사이즈(및 시작 주소)가 주어진 경우
+“64M@0”
+
+#endif /* @Iamroot  */
 
 static int __init __parse_crashkernel(char *cmdline,
 			     unsigned long long system_ram,

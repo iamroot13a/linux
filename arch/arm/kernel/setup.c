@@ -1180,7 +1180,11 @@ static inline unsigned long long get_total_mem(void)
 	total = max_low_pfn - min_low_pfn;
 	return total << PAGE_SHIFT;
 }
+#if 0  /* @Iamroot: 2019.07.20 */
+__init reserve_crashkernel() : crashkernel cmd를 parsing해서 size와 base주소를 가져옴
+-> base주소 + size영역을 memblock안에서 사용가능한 영역을 찾아서 reserved 영역으로 등록
 
+#endif /* @Iamroot  */
 /**
  * reserve_crashkernel() - reserves memory are for crash kernel
  *
