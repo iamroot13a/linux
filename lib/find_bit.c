@@ -111,6 +111,46 @@ unsigned long find_first_zero_bit(const unsigned long *addr, unsigned long size)
 EXPORT_SYMBOL(find_first_zero_bit);
 #endif
 
+#if 0  /* @Iamroot: 2019.07.27 */
+
+-> find_last_bit(cpumask_bits(cpu_possible_mask),NR_CPUS) + 1
+-> 위함수 링크 따라옴
+
+->cpumask_bits(cpu_possible_mask)= *addr 
+->NR_CPUS = size
+
+///////////////////////////////////////////////////////////////////////////
+BITMAP_LAST_WORD_MASK(nbits) = (~0UL >> (-(nbits) & (BITS_PER_LONG - 1)))
+--> Bits_per_Long = 32 (32비트 연산체계)
+
+31 = 1f(16)
+0000 001f
+-> 0000x24  0000x3 0001 1111x4 
+
+nbit = 1
+-1 (보수/ reverse + 1 해야함)
+ffff ffff(16)
+
+~0UL>>1f
+--->1
+
+ffff ffff >> 1f
+0000 0001
+///////////////////////////////////////////////////////////////////////////
+
+
+32비트 연산체계에서는 nr_cpu 0~32개지원
+-> size max 32
+
+val = max 32, idx = 31/32 = 0
+
+val = max 32 & addr[0]
+return 0x 32 + addr[0]의 마지막 MSB bit. bit 위치는 0부터 시작
+ex) addr[0] = 0x1111 1111(16진수)
+-> '0001' x 8번(2진수) -> 28번째 1이 마지막 bit               
+
+#endif /* @Iamroot  */
+
 #ifndef find_last_bit
 unsigned long find_last_bit(const unsigned long *addr, unsigned long size)
 {

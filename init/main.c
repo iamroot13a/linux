@@ -346,6 +346,11 @@ static int __init rdinit_setup(char *str)
 }
 __setup("rdinit=", rdinit_setup);
 
+#if 0  /* @Iamroot: 2019.07.27 */
+setup_nr_cpu_ids() : nr_cpu수 세팅
+
+#endif /* @Iamroot  */
+
 #ifndef CONFIG_SMP
 static const unsigned int setup_max_cpus = NR_CPUS;
 static inline void setup_nr_cpu_ids(void) { }
