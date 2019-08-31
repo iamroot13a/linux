@@ -1355,6 +1355,13 @@ phys_addr_t per_cpu_ptr_to_phys(void *addr)
 		       offset_in_page(addr);
 }
 
+#if 0  /* @Iamroot: 2019.08.31 */
+
+참고 : http://jake.dothome.co.kr/setup_per_cpu_areas/
+-> pcpu_alloc_alloc_info() -> alloc 정보 그림 참고할것
+
+#endif /* @Iamroot  */
+
 /**
  * pcpu_alloc_alloc_info - allocate percpu allocation info
  * @nr_groups: the number of groups
@@ -1610,6 +1617,15 @@ int __init pcpu_setup_first_chunk(const struct pcpu_alloc_info *ai,
 
 	/* we're done parsing the input, undefine BUG macro and dump config */
 #undef PCPU_SETUP_BUG_ON
+#if 0  /* @Iamroot: 2019.08.31 */
+
+pcpu_dump_alloc_info 예시 
+
+pcpu-alloc: s0 r0 d32768 u32768 alloc=1*32768
+pcpu-alloc: [0] 0
+
+#endif /* @Iamroot  */
+
 	pcpu_dump_alloc_info(KERN_DEBUG, ai);
 
 	pcpu_nr_groups = ai->nr_groups;
