@@ -1920,6 +1920,13 @@ static struct pcpu_alloc_info * __init pcpu_build_alloc_info(
 }
 #endif /* BUILD_EMBED_FIRST_CHUNK || BUILD_PAGE_FIRST_CHUNK */
 
+#if 0  /* @Iamroot: 2020.01.11 */
+pcpu_build_alloc_info() : PERCPU에 따른 group, unit 등의 정보를 NUMA 대칭/비대칭 또는 UMA 형태에 따라 할당,
+-> 정보를 구조체화 해서 return. 상세 내용은 문C 블로그내 PERCPU 정보 확인추천함
+
+#endif /* @Iamroot  */
+
+
 #if defined(BUILD_EMBED_FIRST_CHUNK)
 /**
  * pcpu_embed_first_chunk - embed the first percpu chunk into bootmem
