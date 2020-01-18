@@ -2057,6 +2057,16 @@ int __init pcpu_embed_first_chunk(size_t reserved_size, size_t dyn_size,
 	rc = pcpu_setup_first_chunk(ai, base);
 	goto out_free;
 
+#if 0  /* @Iamroot: 2020.01.18 */
+pcpu_dfl_fc_free free_fn : memblock내 메모리영역 해제
+-> 포인터 주소기준 size만큼 해제(page 단위로 이루어져 있음)
+
+pcpu_free_alloc_info(ai) : 
+pcpu 정보를 구조체로 받아 first chunk 생성에 이용
+-> first chunk 생성후 메모리 해제
+
+#endif /* @Iamroot  */
+
 out_free_areas:
 	for (group = 0; group < ai->nr_groups; group++)
 		if (areas[group])
